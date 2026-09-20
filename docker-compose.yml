@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: fusion-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fusion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusion_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-fusion}
+    ports:
+      # Expuesto al host para poder usar Prisma Studio y clientes SQL desde Windows.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # La app no arranca hasta que Postgres acepte conexiones de verdad.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fusion} -d ${POSTGRES_DB:-fusion}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: fusion-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fusion}:${POSTGRES_PASSWORD:-fusion_dev}@db:5432/${POSTGRES_DB:-fusion}?schema=public
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-dev_secret_cambiar_en_produccion}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - .:/app
+      # Anonymous volumes: node_modules y .next viven en el contenedor (Linux),
+      # no se pisan con lo que haya en Windows.
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  db_data:

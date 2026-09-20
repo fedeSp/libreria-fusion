@@ -1,0 +1,82 @@
+# Compose de producción para el VPS (Contabo). Se sirve bajo
+# https://zestech.com.ar/libreria vía nginx; todo escucha solo en localhost.
+#
+# A diferencia del compose de dev:
+#  - la app corre la imagen "runner" (Next standalone), no `next dev`
+#  - no se montan volúmenes de código (nada de hot reload)
+#  - un servicio efímero "migrate" aplica migraciones y seed antes de servir
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: fusion-prod-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Nunca expuesto fuera del host.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - fusion_prod_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Corre una vez, aplica migraciones y siembra, y termina. La imagen "build"
+  # tiene el CLI de Prisma y tsx (que el runner no incluye).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        # basePath se hornea en build; sin esto la app sirve en la raíz.
+        NEXT_PUBLIC_BASE_PATH: /libreria
+        NEXT_PUBLIC_SITE_URL: https://zestech.com.ar/libreria
+    container_name: fusion-prod-web
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      NEXT_PUBLIC_BASE_PATH: /libreria
+      NEXT_PUBLIC_SITE_URL: https://zestech.com.ar/libreria
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      # Mail al admin. Defaults de Gmail listos: el único dato que falta es
+      # SMTP_PASS (contraseña de aplicación de Gmail). Al cargarlo, se activa solo.
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-fusionlibreriapapelera@gmail.com}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL:-}
+    # nginx (en el host) proxea /libreria hacia acá.
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      # Las fotos subidas persisten fuera del contenedor (sobreviven rebuilds).
+      - fusion_uploads:/app/public/uploads
+
+volumes:
+  fusion_prod_db:
+  fusion_uploads:

@@ -1,0 +1,290 @@
+// Librería Fusión — modelo de datos
+//
+// Convenciones:
+//  - Todos los importes se guardan en CENTAVOS (Int). Nada de floats para plata.
+//  - Los slugs son la URL pública y son únicos.
+//  - Los OrderItem guardan una FOTO del producto al momento de la compra
+//    (nombre y precio copiados), así editar el catálogo no reescribe el historial.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- catálogo
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  // Orden de aparición en la home y en el menú. Menor primero.
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  // Jerarquía opcional: "Escolar > Cuadernos". Null = categoría raíz.
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([isActive, position])
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  // Descripción larga en texto plano o markdown liviano.
+  description String?
+  // Bajada corta para las tarjetas del catálogo.
+  summary     String?
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId    String?
+  brand      Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+
+  // SEO propio por producto. Si están vacíos se genera uno por defecto.
+  metaTitle       String?
+  metaDescription String?
+
+  images   ProductImage[]
+  variants ProductVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId, isActive])
+  @@index([isFeatured, isActive])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Null = foto general del producto, se muestra sea cual sea la variante
+  // elegida. Si se asigna a una variante puntual (ej: el cuaderno rosa), la
+  // ficha muestra esas fotos apenas el cliente elige ese color.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  url String
+  // Obligatorio a nivel de formulario: la tienda vieja tenía imágenes sin alt.
+  alt      String
+  position Int    @default(0)
+
+  @@index([productId, position])
+  @@index([variantId])
+}
+
+// Todo producto tiene al menos una variante, aunque no ofrezca opciones.
+// El precio y el stock viven acá, nunca en Product.
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // "Negro", "Talle 3", o "Único" cuando el producto no tiene variantes.
+  name String
+  sku  String? @unique
+
+  // Centavos. $10.900,00 se guarda como 1090000.
+  priceCents Int
+  // Precio tachado, para mostrar un "antes". Null = sin oferta.
+  compareAtPriceCents Int?
+
+  stock    Int     @default(0)
+  isActive Boolean @default(true)
+
+  position   Int         @default(0)
+  orderItems OrderItem[]
+  images     ProductImage[]
+
+  @@index([productId, position])
+}
+
+// ---------------------------------------------------------------- pedidos
+
+enum OrderStatus {
+  PENDIENTE_PAGO // creado, esperando que Mercado Pago confirme
+  PAGADO // plata acreditada, hay que preparar el pedido
+  EN_PREPARACION // lo están armando en el local
+  LISTO_PARA_RETIRAR // avisado al cliente, esperando que pase
+  ENTREGADO // retirado, caso cerrado
+  CANCELADO // caído por vencimiento, rechazo o cancelación manual
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  REEMBOLSADO
+}
+
+enum DeliveryMethod {
+  RETIRO_LOCAL
+  ENVIO_DOMICILIO
+}
+
+// Los medios de pago son datos, no código: sumar "efectivo al retirar"
+// es insertar una fila, no tocar el checkout.
+model PaymentMethod {
+  id    String @id @default(cuid())
+  // "mercadopago", "efectivo", "transferencia"
+  code  String @unique
+  label String
+  // Texto que ve el cliente al elegirlo en el checkout.
+  description String?
+  // true = redirige a un proveedor externo. false = se salda en el local.
+  isOnline    Boolean @default(false)
+  isActive    Boolean @default(true)
+  position    Int     @default(0)
+
+  orders   Order[]
+  payments Payment[]
+}
+
+model Order {
+  id String @id @default(cuid())
+  // Número corto y legible para mostrar en el mostrador: #1001, #1002...
+  number Int @unique @default(autoincrement())
+
+  status OrderStatus @default(PENDIENTE_PAGO)
+
+  // Datos de contacto. No hay direcciones: la entrega es siempre en el local.
+  customerName  String
+  customerEmail String
+  customerPhone String
+  // Aclaración del cliente ("paso el jueves a la tarde").
+  customerNote String?
+
+  // Por defecto se retira en el local. Si es envío, la dirección va en los
+  // campos de abajo — es solo un formulario de domicilio, sin costo de envío
+  // ni integración con correos: eso se calcula y coordina a mano.
+  deliveryMethod     DeliveryMethod @default(RETIRO_LOCAL)
+  shippingAddress    String?
+  shippingCity       String?
+  shippingPostalCode String?
+
+  subtotalCents Int
+  totalCents    Int
+
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  // Si nadie paga antes de esta fecha, el pedido se cancela solo.
+  expiresAt  DateTime?
+  paidAt     DateTime?
+  readyAt    DateTime?
+  pickedUpAt DateTime?
+
+  items    OrderItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerEmail])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Puede quedar en null si el producto se borra: el pedido igual sobrevive
+  // gracias a los campos copiados de abajo.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Foto del momento de la compra.
+  productName String
+  variantName String
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+
+  @@index([orderId])
+}
+
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  status      PaymentStatus @default(PENDIENTE)
+  amountCents Int
+
+  // Id del pago en Mercado Pago, para conciliar y para que el webhook
+  // no procese dos veces lo mismo.
+  providerPaymentId String? @unique
+  providerStatus    String?
+  // Payload crudo del webhook, por si hay que auditar una diferencia.
+  rawPayload Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+// ---------------------------------------------------------------- back office
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+}
+
+// Textos y parámetros que el local edita sin tocar código:
+// horarios, aviso de retiro, CBU, datos de contacto.
+model StoreSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// Preguntas frecuentes de la tienda. Se editan desde el admin y se listan en
+// /preguntas-frecuentes; solo las activas se muestran.
+model Faq {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, position])
+}

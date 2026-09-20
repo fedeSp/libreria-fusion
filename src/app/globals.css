@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/*
+  Paleta.
+
+  La tienda vieja usaba un rosa #F8BBD0 como color de texto Y como fondo de
+  botones, con texto casi blanco encima: 1.53:1 de contraste, cuando WCAG AA
+  pide 4.5:1. El precio y el botón de comprar eran lo menos legible de la página.
+
+  Acá el rosa fuerte (#C2185B, 5.8:1 sobre blanco) es el único que lleva texto.
+  El rosa claro queda relegado a fondos, y los colores alegres (fucsia, verde,
+  amarillo) son decorativos: nunca llevan texto encima.
+*/
+@theme {
+  --color-brand: #c2185b;
+  --color-brand-dark: #9e1350;
+  --color-brand-soft: #fde7f0;
+  --color-brand-softer: #fff5f9;
+
+  --color-ink: #1f2430;
+  --color-muted: #5b6472;
+  --color-line: #e7e2e6;
+  --color-paper: #fdfcfb;
+
+  /* Decorativos: bloques de categoría, ilustraciones, cintas. Sin texto. */
+  --color-accent-fuchsia: #e0218a;
+  --color-accent-green: #0e9f6e;
+  --color-accent-yellow: #f5b301;
+
+  --color-success: #12805c;
+  --color-danger: #b3261e;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visible y consistente: se navega toda la tienda con teclado. */
+:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

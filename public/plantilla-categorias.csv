@@ -1,0 +1,4 @@
+nombre,slug,categoria_padre,descripcion,orden,activa
+Escolar,escolar,,Útiles escolares y de librería,0,si
+Cuadernos,cuadernos,escolar,Cuadernos rayados y cuadriculados,0,si
+Comercial,comercial,,Insumos de oficina y comercio,1,si
