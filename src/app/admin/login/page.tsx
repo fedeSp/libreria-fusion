@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdmin, login } from "@/lib/auth";
+import { minutosRestantes } from "@/lib/login-throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -9,19 +10,25 @@ async function loginAction(formData: FormData) {
   "use server";
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
-  const ok = await login(email, password);
-  if (!ok) redirect("/admin/login?error=1");
-  redirect("/admin");
+  const result = await login(email, password);
+  if (result.ok) redirect("/admin");
+
+  // El tiempo de espera viaja en la URL porque el redirect pierde todo lo demás.
+  if (result.motivo === "bloqueado") {
+    redirect(`/admin/login?error=bloqueado&espera=${result.restanteMs}`);
+  }
+  redirect("/admin/login?error=1");
 }
 
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; espera?: string }>;
 }) {
   // Si ya está logueado, directo al panel.
   if (await getAdmin()) redirect("/admin");
-  const { error } = await searchParams;
+  const { error, espera } = await searchParams;
+  const bloqueado = error === "bloqueado";
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-4">
@@ -58,7 +65,9 @@ export default async function AdminLoginPage({
 
         {error && (
           <p className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-            Email o contraseña incorrectos.
+            {bloqueado
+              ? `Demasiados intentos fallidos. Probá de nuevo en ${minutosRestantes(Number(espera) || 0)}.`
+              : "Email o contraseña incorrectos."}
           </p>
         )}
 

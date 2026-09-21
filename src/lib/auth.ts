@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
+import { bloqueoRestante, limpiarFallos, registrarFallo } from "./login-throttle";
 
 // Autenticación del panel de admin. Sesión = token firmado con HMAC guardado en
 // una cookie httpOnly. Sin librerías de sesión: para un back office de una sola
@@ -52,12 +53,29 @@ export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 10);
 }
 
-export async function login(email: string, password: string): Promise<boolean> {
+export type LoginResult =
+  | { ok: true }
+  | { ok: false; motivo: "credenciales" }
+  | { ok: false; motivo: "bloqueado"; restanteMs: number };
+
+export async function login(email: string, password: string): Promise<LoginResult> {
+  // Antes de tocar la base: si la cuenta está frenada por intentos fallidos, no
+  // se consulta nada. Así un ataque tampoco puede usar el login para castigar
+  // a Postgres.
+  const restanteMs = bloqueoRestante(email);
+  if (restanteMs > 0) return { ok: false, motivo: "bloqueado", restanteMs };
+
   const admin = await db.adminUser.findUnique({
     where: { email: email.trim().toLowerCase() },
   });
-  if (!admin || !admin.isActive) return false;
-  if (!(await bcrypt.compare(password, admin.passwordHash))) return false;
+  // Mismo mensaje para email inexistente, cuenta desactivada y contraseña
+  // equivocada: no se le confirma a nadie qué casillas existen.
+  if (!admin || !admin.isActive || !(await bcrypt.compare(password, admin.passwordHash))) {
+    registrarFallo(email);
+    return { ok: false, motivo: "credenciales" };
+  }
+
+  limpiarFallos(email);
 
   (await cookies()).set(COOKIE, makeToken(admin.id), {
     httpOnly: true,
@@ -70,7 +88,7 @@ export async function login(email: string, password: string): Promise<boolean> {
     where: { id: admin.id },
     data: { lastLoginAt: new Date() },
   });
-  return true;
+  return { ok: true };
 }
 
 export async function logout(): Promise<void> {
