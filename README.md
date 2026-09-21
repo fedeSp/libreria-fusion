@@ -82,7 +82,7 @@ Hecho:
 - [x] Storefront: home, catálogo con búsqueda y orden, ficha, categorías
 - [x] Páginas informativas y las obligatorias por normativa argentina
 - [x] Paleta accesible (contraste 5.8:1 donde antes había 1.53:1)
-- [x] Deploy en https://zestech.com.ar/libreria (ver deploy abajo)
+- [x] Deploy en https://libreriafusion.com.ar (dominio propio desde el 21/09/2026)
 - [x] Carrito (localStorage + revalidación server-side) y checkout
 - [x] Creación de pedido con precios/stock recalculados desde la base
 - [x] Integración Mercado Pago Checkout Pro (preferencia) + webhook de confirmación

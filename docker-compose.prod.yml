@@ -47,9 +47,10 @@ services:
       dockerfile: Dockerfile
       target: runner
       args:
-        # basePath se hornea en build; sin esto la app sirve en la raíz.
-        NEXT_PUBLIC_BASE_PATH: /libreria
-        NEXT_PUBLIC_SITE_URL: https://zestech.com.ar/libreria
+        # La tienda vive en la raíz de su propio dominio. basePath vacío.
+        # (Estuvo en /libreria mientras se servía bajo zestech.com.ar.)
+        NEXT_PUBLIC_BASE_PATH: ""
+        NEXT_PUBLIC_SITE_URL: https://libreriafusion.com.ar
     container_name: fusion-prod-web
     restart: unless-stopped
     depends_on:
@@ -57,8 +58,8 @@ services:
         condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
-      NEXT_PUBLIC_BASE_PATH: /libreria
-      NEXT_PUBLIC_SITE_URL: https://zestech.com.ar/libreria
+      NEXT_PUBLIC_BASE_PATH: ""
+      NEXT_PUBLIC_SITE_URL: https://libreriafusion.com.ar
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}

@@ -23,9 +23,11 @@ después de la auditoría de la Parte 2 en vez de parcharla.
 Incluye storefront público + panel de administración propio. **No hay cuentas de
 cliente**: se compra sin registrarse.
 
-**Dónde corre:** https://zestech.com.ar/libreria — VPS de Contabo (`37.60.252.163`),
-el mismo server que corre artmuebles y n8n. nginx del host proxea `/libreria` al
-contenedor en `127.0.0.1:3001`. Código y compose del server en `/opt/libreria-fusion`.
+**Dónde corre:** https://libreriafusion.com.ar — VPS de Contabo (`37.60.252.163`),
+el mismo server que corre artmuebles y n8n. nginx del host termina el TLS con un
+certificado Origin de Cloudflare y proxea al contenedor en `127.0.0.1:3001`.
+Código y compose del server en `/opt/libreria-fusion`. La URL vieja
+`zestech.com.ar/libreria` redirige acá (ver 1.7).
 Es un ambiente de **staging**: la tienda que hoy atiende clientes sigue siendo la de
 Tienda Nube (y está cerrada al público).
 
@@ -150,13 +152,21 @@ después necesita su propia ruta. No alcanza con dejarla en `public/`.
 
 ### basePath
 
-En producción la app vive bajo `/libreria`, no en la raíz. `NEXT_PUBLIC_BASE_PATH`
+**Hoy el basePath está vacío** y la tienda vive en la raíz de su dominio, así que
+esto no muerde. Queda escrito porque estuvo bajo `/libreria` hasta el 21/09/2026 y
+porque vuelve a aplicar si alguna vez se sirve en un subdirectorio.
+
+`NEXT_PUBLIC_BASE_PATH`
 **se hornea en `next build`** (está como `ARG` en el Dockerfile): ponerlo solo como env
 de runtime NO alcanza. Consecuencias:
 
 - `next/link` y `next/router` prefijan solos. **`next/image` no**: el `src` tiene que
   traer el basePath ya puesto. Por eso `/api/admin/upload` devuelve
   `${NEXT_PUBLIC_BASE_PATH}/uploads/<nombre>` y eso es lo que se guarda en la base.
+  **Consecuencia que costó una migración:** al sacar el basePath, las 96 filas de
+  `ProductImage` que tenían `/libreria/uploads/...` quedaron apuntando a la nada y
+  hubo que reescribirlas con un UPDATE. Si el basePath vuelve a cambiar, acordarse
+  de la base.
 - Un `fetch` desde el cliente a una ruta propia también lo necesita (ver `BASE` en
   `src/components/image-manager.tsx`).
 
@@ -183,7 +193,7 @@ Proxied (nube naranja) en Cloudflare. Verificar siempre desde el propio server c
 `curl --resolve zestech.com.ar:443:127.0.0.1 -k`. **No tocar** el contenedor de n8n ni
 artmuebles, que viven en el mismo VPS.
 
-## 1.7 Mudanza a libreriafusion.com.ar (pendiente)
+## 1.7 Mudanza a libreriafusion.com.ar
 
 Relevado el 20/09/2026 con `whois` y `dig`:
 
@@ -209,7 +219,21 @@ cambiar la delegación de los `awsdns-*` a los nameservers de Cloudflare.
    nameservers asignados son `ernest.ns.cloudflare.com` y
    `hadlee.ns.cloudflare.com`. Proxiar las IPs de Tienda Nube rompe su SSL y su ruteo por
    host: la nube naranja recién va cuando el dominio apunte a nuestro server.
-2. La dueña cambia los nameservers en nic.ar. Propaga en minutos u horas, y
+2. La dueña cambia los nameservers en nic.ar. **HECHO el 21/09/2026**: cargados
+   12:17, zona `.ar` publicada y Cloudflare activo 12:57. Verificado: los
+   resolvers públicos devuelven `ernest` y `hadlee`, los registros siguen
+   apuntando a Tienda Nube y tanto la raíz como `www` responden 200. **Sin caída.**
+
+   > Entre que el NIC guarda el cambio y publica la zona hay un rato (40 minutos
+   > esta vez) en el que el whois ya muestra los nameservers nuevos pero el DNS
+   > todavía no: Cloudflare marca "Invalid nameservers" y el dominio resuelve
+   > para unos sí y para otros no. Es esperable, se acomoda solo.
+
+   > Para delegar a un proveedor externo va **"Agregar una nueva delegación"**, con
+   > el hostname completo y las IP **vacías**. **"Autodelegar"** es para servidores
+   > dentro del propio dominio y exige IP: usarlo da "nombre del host inválido" y
+   > después "debe contener al menos una IP". Al final hay que apretar
+   > **"Ejecutar Cambios"** o no se guarda nada. Propaga en minutos u horas, y
    mientras tanto **el sitio sigue siendo el de Tienda Nube**: nadie se entera.
 3. Cuando la tienda nueva esté lista, apuntar el registro al VPS y pasar a nube
    naranja. Instantáneo y reversible en segundos.
@@ -219,15 +243,35 @@ sin apuro, y el cambio real se decide otro día.
 
 ### Qué cambia de nuestro lado en el paso 3
 
-- Bloque de nginx para `libreriafusion.com.ar` + `www` con certificado Origin de
-  Cloudflare (mismo esquema que zestech).
+**Hecho el 21/09/2026** (falta solo apuntar los registros DNS al VPS):
+
+- Bloque de nginx en `sites-available/libreriafusion`, con certificado Origin de
+  Cloudflare en `/etc/nginx/ssl/libreriafusion.{pem,key}` (vence en 2041, solo vale
+  detrás de la nube naranja). `www` redirige al dominio pelado.
+- `client_max_body_size 8m`: el default de nginx es 1 MB y cortaba con un 413 la
+  subida de cualquier foto más pesada que eso, antes de que la app se enterara.
+- **Todo el sitio detrás del basic auth** (usuario `fusion`) hasta que salga
+  productiva: el dominio figura en las bolsas y en el Instagram del local, así que
+  no puede mostrar una tienda a medio terminar. Para abrirla se borran dos líneas
+  del `location /`. El webhook de MP queda siempre abierto.
+- `zestech.com.ar/libreria` redirige al dominio nuevo conservando la ruta, salvo el
+  webhook de MP, que sigue proxeado (un 301 no garantiza que se reenvíe el POST).
 - `NEXT_PUBLIC_BASE_PATH` **vacío** (la tienda pasa de `/libreria` a la raíz) y
   `NEXT_PUBLIC_SITE_URL=https://libreriafusion.com.ar`. Las dos se hornean en el
   build → **rebuild obligatorio**, no alcanza con el `.env`.
 - Las back_urls y la notification_url de MP salen de `SITE_URL` y se reapuntan
   solas, pero hay que actualizar la URL del webhook en el panel de Mercado Pago.
 - Sacar el `robots: noindex` de `src/app/layout.tsx`.
-- Sacar el `auth_basic` que quede, si la tienda abre al público (ver 1.6).
+- **Decidir el esquema de acceso al panel.** Hoy `/libreria/admin` está detrás de
+  un `auth_basic` de nginx (usuario `fusion`) que hace de segunda cerradura, porque
+  el login propio no limita intentos. El 20/09/2026 ese candado dejó afuera a la
+  dueña: tenía la credencial guardada en el navegador y al renombrarse el realm
+  el navegador dejó de mandarla (se destrabó pasándole las credenciales el
+  21/09). Desde el 21/09 el login de la app tiene freno propio
+  (`src/lib/login-throttle.ts`: 5 intentos fallidos por cuenta y 15 minutos de
+  espera), así que el `auth_basic` ya no es la única defensa y se puede sacar
+  para que la dueña maneje una sola contraseña. Se decide al armar el nginx del
+  dominio nuevo, para no rehacerlo dos veces.
 - La tienda de Tienda Nube deja de responder en ese dominio.
 
 ## 1.8 Estado
