@@ -50,6 +50,9 @@ export default async function PedidosPage({
     return qs ? `/admin/pedidos?${qs}` : "/admin/pedidos";
   };
 
+  const sinFechas =
+    active.key === "todos" ? "/admin/pedidos" : `/admin/pedidos?estado=${active.key}`;
+
   const LIMITE = 100;
   const orders = await db.order.findMany({
     where: {
@@ -72,85 +75,93 @@ export default async function PedidosPage({
 
   return (
     <AdminShell adminName={admin.name}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
-        {/* Un solo form GET para las dos cosas: el botón de filtrar recarga la
-            pantalla y el de exportar apunta a la ruta del CSV con formAction.
-            Así el CSV sale siempre con el mismo recorte que se está viendo, y
-            todo funciona sin JavaScript. */}
-        <form
-          action="/admin/pedidos"
-          method="get"
-          className="flex flex-wrap items-end gap-2"
-        >
-          {active.status && <input type="hidden" name="estado" value={active.key} />}
-          <label className="text-xs text-muted">
+      <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
+
+      {/* Estado y fechas son el mismo filtro, así que van en un solo panel en
+          vez de sueltos por la pantalla.
+
+          Un único form GET resuelve las dos acciones: "Filtrar" recarga el
+          listado y "Exportar CSV" apunta al CSV con formAction. Que el botón de
+          exportar viva adentro del form no es casual — así la planilla sale con
+          lo que está escrito en los campos aunque todavía no se haya filtrado.
+          Todo sin JavaScript. */}
+      <form
+        action="/admin/pedidos"
+        method="get"
+        className="mt-4 rounded-xl border border-line bg-white p-4"
+      >
+        {active.status && <input type="hidden" name="estado" value={active.key} />}
+
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <Link
+              key={f.key}
+              href={conFiltros(f.key)}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                active.key === f.key
+                  ? "border-brand bg-brand text-white"
+                  : "border-line text-ink hover:border-brand"
+              }`}
+            >
+              {f.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4">
+          <label className="text-xs font-medium text-muted">
             Desde
             <input
               type="date"
               name="desde"
               defaultValue={desde ?? ""}
-              className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
+              className="mt-1 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
             />
           </label>
-          <label className="text-xs text-muted">
+          <label className="text-xs font-medium text-muted">
             Hasta
             <input
               type="date"
               name="hasta"
               defaultValue={hasta ?? ""}
-              className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
+              className="mt-1 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
             />
           </label>
           <button
             type="submit"
-            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+            className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
           >
             Filtrar
           </button>
+          {hayRango && (
+            <Link
+              href={sinFechas}
+              className="px-1 py-2 text-sm font-medium text-brand hover:underline"
+            >
+              Limpiar
+            </Link>
+          )}
+          {/* Exportar no filtra nada: se despega del resto para que no se lea
+              como un botón más de la misma fila. */}
           <button
             type="submit"
             formAction="/api/admin/export/pedidos"
-            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+            className="ml-auto rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
           >
             Exportar CSV
           </button>
-        </form>
-      </div>
-
-      <nav className="mt-4 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.key}
-            href={conFiltros(f.key)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
-              active.key === f.key
-                ? "border-brand bg-brand text-white"
-                : "border-line text-ink hover:border-brand"
-            }`}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </nav>
+        </div>
+      </form>
 
       <p className="mt-3 text-sm text-muted">
         {orders.length === LIMITE
           ? `Mostrando los ${LIMITE} más recientes`
           : `${orders.length} ${orders.length === 1 ? "pedido" : "pedidos"}`}
         {hayRango && " en el rango elegido"}
-        {hayRango && (
-          <Link
-            href={active.key === "todos" ? "/admin/pedidos" : `/admin/pedidos?estado=${active.key}`}
-            className="ml-2 font-medium text-brand hover:underline"
-          >
-            Limpiar fechas
-          </Link>
-        )}
         {/* El listado corta en 100 pero el CSV no: si se llegó al tope, la
             planilla va a traer más filas que las que se ven acá. */}
         {orders.length === LIMITE && (
-          <span className="ml-2">La exportación no tiene ese tope.</span>
+          <span className="ml-1">— la exportación no tiene ese tope.</span>
         )}
       </p>
 
