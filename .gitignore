@@ -12,3 +12,6 @@ next-env.d.ts
 /public/uploads/
 tsconfig.tsbuildinfo
 .claude/
+
+# Los PDF del manual se regeneran con scripts/manual-panel.py
+docs/*.pdf
