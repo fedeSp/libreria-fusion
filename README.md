@@ -145,11 +145,20 @@ marca significa "no me meto", no "borrala".
 ### Pedidos: solo exportar
 
 *Admin → Pedidos* tiene su botón de exportar, y **respeta el filtro de estado
-que estés viendo**: si estás en "Pagados", baja los pagados. Al lado hay dos
-campos de fecha (**desde** y **hasta**, opcionales) para bajar un mes puntual;
-el rango se interpreta en hora de Buenos Aires, así que una venta de las 23:00
-del 30 de septiembre cae en septiembre y no en octubre. El nombre del archivo
-lleva el rango, para que bajar dos meses no deje dos archivos iguales.
+que estés viendo**. Los campos **desde** y **hasta** filtran la grilla y la
+exportación a la vez — un mismo form GET, con dos botones: *Filtrar* recarga la
+pantalla y *Exportar CSV* apunta a la ruta del CSV con `formAction`, así la
+planilla sale siempre con el mismo recorte que se ve. Funciona sin JavaScript.
+
+El rango se interpreta en hora de Buenos Aires con las mismas funciones que usa
+la grilla, así que las dos no pueden discrepar sobre qué pedidos entran en un
+mes: una venta de las 23:00 del 30 de septiembre cae en septiembre. El nombre
+del archivo lleva el rango, para que bajar dos meses no deje dos archivos
+iguales.
+
+> El listado corta en los 100 más recientes y la exportación no: cuando se
+> llega a ese tope la pantalla lo aclara, porque el CSV va a traer más filas de
+> las que se ven.
 
 Sale **una fila por pedido**, no por producto, para que sumar la columna
 `total` dé lo que se vendió de verdad; lo comprado va resumido en la columna

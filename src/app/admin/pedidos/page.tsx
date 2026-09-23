@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/money";
 import { expireStaleOrders } from "@/lib/orders";
+import { startOfDayAR, endOfDayAR } from "@/lib/dates";
 import { AdminShell } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/order-status";
 
@@ -23,17 +24,40 @@ const FILTERS: { key: string; label: string; status?: OrderStatus }[] = [
 export default async function PedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; desde?: string; hasta?: string }>;
 }) {
   const admin = await requireAdmin();
   await expireStaleOrders();
-  const { estado } = await searchParams;
+  const { estado, desde, hasta } = await searchParams;
   const active = FILTERS.find((f) => f.key === estado) ?? FILTERS[0];
 
+  // El rango se interpreta en hora de Buenos Aires con las mismas funciones que
+  // usa la exportación, así que la grilla y el CSV no pueden discrepar sobre
+  // qué pedidos entran en un mes.
+  const gte = startOfDayAR(desde ?? null);
+  const lte = endOfDayAR(hasta ?? null);
+  const createdAt = { ...(gte && { gte }), ...(lte && { lte }) };
+  const hayRango = Object.keys(createdAt).length > 0;
+
+  // Los links de estado tienen que conservar el rango, si no cambiar de solapa
+  // lo borra sin que nadie lo haya pedido.
+  const conFiltros = (key: string) => {
+    const q = new URLSearchParams();
+    if (key !== "todos") q.set("estado", key);
+    if (desde) q.set("desde", desde);
+    if (hasta) q.set("hasta", hasta);
+    const qs = q.toString();
+    return qs ? `/admin/pedidos?${qs}` : "/admin/pedidos";
+  };
+
+  const LIMITE = 100;
   const orders = await db.order.findMany({
-    where: active.status ? { status: active.status } : {},
+    where: {
+      ...(active.status && { status: active.status }),
+      ...(hayRango && { createdAt }),
+    },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: LIMITE,
     select: {
       id: true,
       number: true,
@@ -50,11 +74,12 @@ export default async function PedidosPage({
     <AdminShell adminName={admin.name}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
-        {/* Un form GET apunta directo a la ruta de exportación y el navegador
-            baja el archivo: no hace falta JavaScript. El filtro de estado viaja
-            escondido, así se exporta lo que la persona está viendo. */}
+        {/* Un solo form GET para las dos cosas: el botón de filtrar recarga la
+            pantalla y el de exportar apunta a la ruta del CSV con formAction.
+            Así el CSV sale siempre con el mismo recorte que se está viendo, y
+            todo funciona sin JavaScript. */}
         <form
-          action="/api/admin/export/pedidos"
+          action="/admin/pedidos"
           method="get"
           className="flex flex-wrap items-end gap-2"
         >
@@ -64,6 +89,7 @@ export default async function PedidosPage({
             <input
               type="date"
               name="desde"
+              defaultValue={desde ?? ""}
               className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
             />
           </label>
@@ -72,11 +98,19 @@ export default async function PedidosPage({
             <input
               type="date"
               name="hasta"
+              defaultValue={hasta ?? ""}
               className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
             />
           </label>
           <button
             type="submit"
+            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            Filtrar
+          </button>
+          <button
+            type="submit"
+            formAction="/api/admin/export/pedidos"
             className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
           >
             Exportar CSV
@@ -84,15 +118,11 @@ export default async function PedidosPage({
         </form>
       </div>
 
-      <p className="mt-1 text-xs text-muted">
-        Las fechas son solo para la exportación; si las dejás vacías, baja todo.
-      </p>
-
       <nav className="mt-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <Link
             key={f.key}
-            href={f.key === "todos" ? "/admin/pedidos" : `/admin/pedidos?estado=${f.key}`}
+            href={conFiltros(f.key)}
             className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
               active.key === f.key
                 ? "border-brand bg-brand text-white"
@@ -104,8 +134,32 @@ export default async function PedidosPage({
         ))}
       </nav>
 
+      <p className="mt-3 text-sm text-muted">
+        {orders.length === LIMITE
+          ? `Mostrando los ${LIMITE} más recientes`
+          : `${orders.length} ${orders.length === 1 ? "pedido" : "pedidos"}`}
+        {hayRango && " en el rango elegido"}
+        {hayRango && (
+          <Link
+            href={active.key === "todos" ? "/admin/pedidos" : `/admin/pedidos?estado=${active.key}`}
+            className="ml-2 font-medium text-brand hover:underline"
+          >
+            Limpiar fechas
+          </Link>
+        )}
+        {/* El listado corta en 100 pero el CSV no: si se llegó al tope, la
+            planilla va a traer más filas que las que se ven acá. */}
+        {orders.length === LIMITE && (
+          <span className="ml-2">La exportación no tiene ese tope.</span>
+        )}
+      </p>
+
       {orders.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">No hay pedidos en este estado.</p>
+        <p className="mt-8 text-sm text-muted">
+          {hayRango
+            ? "No hay pedidos en ese rango de fechas."
+            : "No hay pedidos en este estado."}
+        </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-white">
           <table className="w-full text-sm">
