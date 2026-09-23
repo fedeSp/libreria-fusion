@@ -1,9 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
-import { saveProduct, type ProductFormState } from "@/app/admin/productos/actions";
+import { useActionState, useRef, useState } from "react";
+import {
+  saveProduct,
+  suggestVariantSkus,
+  type ProductFormState,
+} from "@/app/admin/productos/actions";
 
-type Variant = { id: string; name: string; priceCents: number; stock: number };
+type Variant = { id: string; name: string; priceCents: number; stock: number; sku: string };
 type Category = { id: string; name: string };
 
 export function ProductEditForm({
@@ -23,8 +27,38 @@ export function ProductEditForm({
     { ok: false },
   );
 
+  // Los SKU son los únicos campos controlados del formulario: el botón de
+  // generar tiene que poder escribirlos. El resto sigue sin estado.
+  const [skus, setSkus] = useState<Record<string, string>>(
+    Object.fromEntries(variants.map((v) => [v.id, v.sku])),
+  );
+  const [generando, setGenerando] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function generarSkus() {
+    // El nombre y la categoría se leen del formulario, no de las props: si la
+    // persona acaba de corregir el nombre, el código tiene que salir del nombre
+    // nuevo aunque todavía no haya guardado.
+    const datos = new FormData(formRef.current ?? undefined);
+    const nombre = String(datos.get("name") ?? "").trim();
+    if (!nombre) return;
+
+    setGenerando(true);
+    try {
+      const generados = await suggestVariantSkus(
+        nombre,
+        String(datos.get("categoryId") ?? "") || null,
+        variants.length,
+        productId,
+      );
+      setSkus(Object.fromEntries(variants.map((v, i) => [v.id, generados[i] ?? skus[v.id]])));
+    } finally {
+      setGenerando(false);
+    }
+  }
+
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       <div>
         <label htmlFor="name" className="text-sm font-semibold text-ink">Nombre</label>
         <input
@@ -75,7 +109,19 @@ export function ProductEditForm({
       </div>
 
       <fieldset>
-        <legend className="text-sm font-semibold text-ink">Variantes: precio y stock</legend>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <legend className="text-sm font-semibold text-ink">
+            Variantes: precio, stock y código
+          </legend>
+          <button
+            type="button"
+            onClick={generarSkus}
+            disabled={generando}
+            className="text-sm font-semibold text-brand hover:underline disabled:opacity-50"
+          >
+            {generando ? "Generando…" : "Generar SKU"}
+          </button>
+        </div>
         <div className="mt-2 space-y-2">
           {variants.map((v) => (
             <div key={v.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line p-3">
@@ -97,6 +143,16 @@ export function ProductEditForm({
                   min={0}
                   defaultValue={v.stock}
                   className="ml-1 w-20 rounded border border-line px-2 py-1 text-sm text-ink"
+                />
+              </label>
+              <label className="text-xs text-muted">
+                SKU
+                <input
+                  name={`sku_${v.id}`}
+                  value={skus[v.id] ?? ""}
+                  onChange={(e) => setSkus({ ...skus, [v.id]: e.target.value })}
+                  placeholder="opcional"
+                  className="ml-1 w-40 rounded border border-line px-2 py-1 font-mono text-xs uppercase text-ink"
                 />
               </label>
             </div>

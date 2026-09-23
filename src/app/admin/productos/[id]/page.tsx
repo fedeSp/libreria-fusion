@@ -61,6 +61,7 @@ export default async function EditarProducto({
             name: v.name,
             priceCents: v.priceCents,
             stock: v.stock,
+            sku: v.sku ?? "",
           }))}
         />
 

@@ -125,6 +125,37 @@ Las fotos **no las sirve el estático de Next**, las sirve `src/app/uploads/[fil
 La ruta solo acepta nombres `[A-Za-z0-9._-]` con extensión de imagen conocida, así que
 no se puede usar para leer otros archivos del server (`/uploads/../../.env` da 404).
 
+## SKU de variantes
+
+Formato **`LAP-ESC-04-001`**: tres letras del producto, tres de la categoría,
+número de producto y número de variante (`001` es siempre la primera). En el
+alta y en la edición hay un botón **Generar SKU** que completa el campo — pero
+lo deja **editable**, para poder pegar encima el código del proveedor.
+
+El número de producto no es decorativo: sin él el esquema no cierra. En una
+librería el primer sustantivo se repite mucho (lapices, repuestos, cintas,
+potes) y los productos parecidos caen en la misma categoría, así que solo con
+las seis letras **96 variantes colapsaban en 39 códigos**. Como `sku` es único
+en toda la tienda, la mitad del catálogo no se habría podido guardar. Por la
+misma razón la variante va por número y no por letras: "Verde claro" y "Verde
+oscuro" dan las dos `VER`.
+
+El número de producto sale del máximo usado para ese prefijo más uno, así que
+dar de baja un producto no libera su número para otro. Y pedir de nuevo los SKU
+de un producto que ya los tenía conserva su número: no lo renumera.
+
+`npm run test:sku` cubre el formato y, sobre todo, que no haya colisiones.
+
+### Completar los que ya existen
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --no-deps migrate   npx tsx scripts/backfill-skus.ts           # vista previa, no escribe
+docker compose -f docker-compose.prod.yml run --rm --no-deps migrate   npx tsx scripts/backfill-skus.ts --apply   # aplica, en una transacción
+```
+
+Solo toca las variantes **sin** código, así que correrlo dos veces no cambia
+nada la segunda. Se corrió el 23/09/2026 sobre las 96 variantes del catálogo.
+
 ## Exportar e importar
 
 Categorías y productos se bajan y se suben en CSV, desde los botones de

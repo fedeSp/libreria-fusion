@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parsePriceToCents } from "@/lib/money";
 import { slugify } from "@/lib/slug";
+import { buildSku, nextProductNumber, productNumberFromSku, skuPrefix } from "@/lib/sku";
 
 
 // Garantiza un slug único agregando un sufijo si ya existe.
@@ -32,6 +33,46 @@ export async function toggleProductFeatured(id: string, isFeatured: boolean) {
   revalidatePath("/admin/productos");
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/**
+ * Propone un SKU para cada variante. La usa el botón "Generar" de los
+ * formularios: necesita la base porque el número de producto depende de cuáles
+ * ya están ocupados para ese prefijo.
+ *
+ * Si el producto ya tenía un código con este prefijo, conserva su número: pedir
+ * de nuevo los SKU de un producto existente no lo renumera.
+ */
+export async function suggestVariantSkus(
+  productName: string,
+  categoryId: string | null,
+  cantidadDeVariantes: number,
+  productId?: string,
+): Promise<string[]> {
+  await requireAdmin();
+
+  const categoria = categoryId
+    ? await db.category.findUnique({ where: { id: categoryId }, select: { name: true } })
+    : null;
+
+  const prefix = skuPrefix(productName, categoria?.name);
+
+  const existentes = await db.productVariant.findMany({
+    where: { sku: { startsWith: `${prefix}-` } },
+    select: { sku: true, productId: true },
+  });
+
+  const propio = productId
+    ? existentes
+        .filter((v) => v.productId === productId)
+        .map((v) => productNumberFromSku(v.sku ?? "", prefix))
+        .find((n): n is number => n !== null)
+    : undefined;
+
+  const numero =
+    propio ?? nextProductNumber(prefix, existentes.map((v) => v.sku ?? ""));
+
+  return Array.from({ length: cantidadDeVariantes }, (_, i) => buildSku(prefix, numero, i));
 }
 
 export type ProductFormState = { ok: boolean; error?: string };
@@ -73,12 +114,20 @@ export async function saveProduct(
       for (const v of variants) {
         const priceRaw = formData.get(`price_${v.id}`);
         const stockRaw = formData.get(`stock_${v.id}`);
-        if (priceRaw == null && stockRaw == null) continue;
-        const data: { priceCents?: number; stock?: number } = {};
+        const skuRaw = formData.get(`sku_${v.id}`);
+        if (priceRaw == null && stockRaw == null && skuRaw == null) continue;
+        const data: { priceCents?: number; stock?: number; sku?: string | null } = {};
         if (priceRaw != null) data.priceCents = parsePriceToCents(String(priceRaw));
         if (stockRaw != null) {
           const s = Math.max(0, Math.floor(Number(stockRaw)));
           if (Number.isFinite(s)) data.stock = s;
+        }
+        // El SKU se guarda en mayúsculas y sin espacios: se tipea, se pega y
+        // algún día se escanea. Vacío es null, no cadena vacía, porque la
+        // columna es única y dos cadenas vacías chocarían entre sí.
+        if (skuRaw != null) {
+          const limpio = String(skuRaw).trim().toUpperCase().replace(/\s+/g, "");
+          data.sku = limpio || null;
         }
         await tx.productVariant.update({ where: { id: v.id }, data });
       }
@@ -101,7 +150,7 @@ export type NewProductInput = {
   categoryId: string;
   isActive: boolean;
   isFeatured: boolean;
-  variants: { name: string; price: string; stock: string }[];
+  variants: { name: string; price: string; stock: string; sku: string }[];
   images: { url: string; alt: string }[];
 };
 
@@ -116,7 +165,12 @@ export async function createProduct(
   if (name.length < 2) return { ok: false, error: "El nombre es obligatorio." };
 
   const variants = input.variants
-    .map((v) => ({ name: v.name.trim() || "Único", price: v.price, stock: v.stock }))
+    .map((v) => ({
+      name: v.name.trim() || "Único",
+      price: v.price,
+      stock: v.stock,
+      sku: v.sku.trim().toUpperCase().replace(/\s+/g, ""),
+    }))
     .filter((v) => v.price.trim() !== "");
   if (variants.length === 0) {
     return { ok: false, error: "Cargá al menos una variante con precio." };
@@ -126,6 +180,7 @@ export async function createProduct(
   try {
     variantData = variants.map((v, i) => ({
       name: v.name,
+      sku: v.sku || null,
       priceCents: parsePriceToCents(v.price),
       stock: Math.max(0, Math.floor(Number(v.stock) || 0)),
       position: i,

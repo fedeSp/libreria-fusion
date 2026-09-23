@@ -3,7 +3,11 @@
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { createProduct, type NewProductInput } from "@/app/admin/productos/actions";
+import {
+  createProduct,
+  suggestVariantSkus,
+  type NewProductInput,
+} from "@/app/admin/productos/actions";
 
 type Category = { id: string; name: string };
 
@@ -28,7 +32,24 @@ export function ProductCreateForm({ categories }: { categories: Category[] }) {
     isActive: true,
     isFeatured: false,
   });
-  const [variants, setVariants] = useState([{ name: "Único", price: "", stock: "0" }]);
+  const [variants, setVariants] = useState([
+    { name: "Único", price: "", stock: "0", sku: "" },
+  ]);
+  const [generando, setGenerando] = useState(false);
+
+  // Pide los códigos al servidor porque el número de producto depende de
+  // cuáles ya están ocupados. Completa el campo pero lo deja editable: el día
+  // que tengas el código del proveedor, lo pegas encima.
+  async function generarSkus() {
+    if (!form.name.trim()) return;
+    setGenerando(true);
+    try {
+      const skus = await suggestVariantSkus(form.name, form.categoryId || null, variants.length);
+      setVariants(variants.map((v, i) => ({ ...v, sku: skus[i] ?? v.sku })));
+    } finally {
+      setGenerando(false);
+    }
+  }
   const [images, setImages] = useState<{ url: string; alt: string }[]>([]);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -164,6 +185,16 @@ export function ProductCreateForm({ categories }: { categories: Category[] }) {
                 placeholder="Stock"
                 className="w-20 rounded border border-line px-2 py-1 text-sm"
               />
+              <input
+                value={v.sku}
+                onChange={(e) => {
+                  const next = [...variants];
+                  next[i] = { ...v, sku: e.target.value };
+                  setVariants(next);
+                }}
+                placeholder="SKU"
+                className="w-40 rounded border border-line px-2 py-1 font-mono text-xs uppercase"
+              />
               {variants.length > 1 && (
                 <button
                   type="button"
@@ -176,13 +207,26 @@ export function ProductCreateForm({ categories }: { categories: Category[] }) {
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setVariants([...variants, { name: "", price: "", stock: "0" }])}
-          className="mt-2 text-sm font-semibold text-brand hover:underline"
-        >
-          + Agregar variante
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setVariants([...variants, { name: "", price: "", stock: "0", sku: "" }])}
+            className="text-sm font-semibold text-brand hover:underline"
+          >
+            + Agregar variante
+          </button>
+          <button
+            type="button"
+            onClick={generarSkus}
+            disabled={generando || !form.name.trim()}
+            className="text-sm font-semibold text-brand hover:underline disabled:opacity-50"
+          >
+            {generando ? "Generando…" : "Generar SKU"}
+          </button>
+          {!form.name.trim() && (
+            <span className="text-xs text-muted">Cargá el nombre para generar los SKU.</span>
+          )}
+        </div>
       </fieldset>
 
       {/* Fotos */}
