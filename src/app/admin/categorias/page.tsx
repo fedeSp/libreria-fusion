@@ -37,6 +37,12 @@ export default async function CategoriasAdmin() {
           <span className="text-sm text-muted">{categories.length} en total</span>
         </div>
         <div className="flex gap-2">
+          <a
+            href="/api/admin/export/categorias"
+            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+          >
+            Exportar CSV
+          </a>
           <Link
             href="/admin/categorias/importar"
             className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"

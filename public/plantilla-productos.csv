@@ -1,0 +1,5 @@
+slug,nombre,categoria,marca,resumen,descripcion,activo,destacado,variante,sku,precio,precio_anterior,stock,variante_activa,imagenes,meta_titulo,meta_descripcion
+cuaderno-exito-e3,Cuaderno Éxito E3 x48 hojas rayado,cuadernos,Éxito,Tapa dura forrada,Cuaderno E3 de 48 hojas rayadas con tapa dura forrada.,si,si,Negro,CUA-E3-NEG,"10900,00","12900,00",12,si,,,
+,,,,,,,,Rosa,CUA-E3-ROS,"10900,00",,8,si,,,
+,,,,,,,,Verde oscuro,CUA-E3-VER,"10900,00",,0,no,,,
+tabla-corte-a4,Tabla para corte A4,comercial,,Base de corte autocicatrizante,Base de corte A4 con grilla impresa.,si,no,Único,TAB-A4,"6999,00",,5,si,,,

@@ -4,17 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parsePriceToCents } from "@/lib/money";
+import { slugify } from "@/lib/slug";
 
-// "Cuaderno Éxito E3" -> "cuaderno-exito-e3"
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // saca acentos
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
 
 // Garantiza un slug único agregando un sufijo si ya existe.
 async function uniqueSlug(base: string): Promise<string> {

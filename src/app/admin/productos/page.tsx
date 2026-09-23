@@ -27,12 +27,26 @@ export default async function ProductosAdmin() {
           <h1 className="text-2xl font-extrabold text-ink">Productos</h1>
           <span className="text-sm text-muted">{products.length} en total</span>
         </div>
-        <Link
-          href="/admin/productos/nuevo"
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          + Nuevo producto
-        </Link>
+        <div className="flex gap-2">
+          <a
+            href="/api/admin/export/productos"
+            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+          >
+            Exportar CSV
+          </a>
+          <Link
+            href="/admin/productos/importar"
+            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+          >
+            Importar CSV
+          </Link>
+          <Link
+            href="/admin/productos/nuevo"
+            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            + Nuevo producto
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-white">

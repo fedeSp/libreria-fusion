@@ -23,6 +23,13 @@ export function parsePriceToCents(input: string | number): number {
     .replace(/\./g, "")
     .replace(",", ".");
 
+  // Sin este chequeo, "abc" y "" se limpian hasta quedar en vacío, Number("")
+  // da 0 y el producto termina valiendo cero sin que nadie se entere. Una celda
+  // con basura tiene que fallar, no salir gratis.
+  if (!/\d/.test(normalized)) {
+    throw new Error(`Precio inválido: ${input}`);
+  }
+
   const value = Number(normalized);
   if (!Number.isFinite(value)) {
     throw new Error(`Precio inválido: ${input}`);
@@ -33,4 +40,17 @@ export function parsePriceToCents(input: string | number): number {
 /** Cuotas sin interés, para mostrar debajo del precio. */
 export function installment(cents: number, count: number): string {
   return formatPrice(Math.round(cents / count));
+}
+
+/**
+ * Precio para una celda de CSV: "1090000" -> "10900,00".
+ *
+ * Sale en formato argentino a propósito, porque parsePriceToCents lee la coma
+ * como decimal y el punto como separador de miles. Exportar "10900.00" haría
+ * que al reimportar el archivo el precio se multiplique por cien.
+ */
+export function formatPriceForCsv(cents: number): string {
+  const entero = Math.trunc(Math.abs(cents) / 100);
+  const decimales = String(Math.abs(cents) % 100).padStart(2, "0");
+  return `${cents < 0 ? "-" : ""}${entero},${decimales}`;
 }

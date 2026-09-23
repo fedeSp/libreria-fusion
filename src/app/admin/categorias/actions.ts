@@ -4,17 +4,14 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseCsv } from "@/lib/csv";
+import {
+  CATEGORY_COLUMNS,
+  cell,
+  columnIndexes,
+  parseActiveFlag,
+} from "@/lib/catalog-csv";
+import { slugify } from "@/lib/slug";
 
-// "Escolar y oficina" -> "escolar-y-oficina"
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // saca acentos
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
 
 async function uniqueSlug(base: string, ignoreId?: string): Promise<string> {
   const root = base || "categoria";
@@ -137,28 +134,6 @@ export async function deleteCategory(
 
 // ------------------------------------------------------------- importar CSV
 
-// Nombres de columna aceptados, en español (para la plantilla) e inglés (por
-// si el archivo viene de otro lado). El orden de las columnas no importa.
-const HEADER_ALIASES: Record<string, string[]> = {
-  name: ["nombre", "name"],
-  slug: ["slug"],
-  parentSlug: ["categoria_padre", "categoria padre", "parent", "parent_slug"],
-  description: ["descripcion", "descripción", "description"],
-  position: ["orden", "position"],
-  isActive: ["activa", "active", "isactive"],
-};
-
-function findColumn(header: string[], aliases: string[]): number {
-  return header.findIndex((h) => aliases.includes(h.trim().toLowerCase()));
-}
-
-// Todo lo que no diga explícitamente "no" se toma como activa: en una planilla
-// llenada a mano es más común dejar la celda vacía que escribir "sí".
-function parseActiveFlag(value: string): boolean {
-  const v = value.trim().toLowerCase();
-  return !["no", "0", "false", "inactiva", "inactivo"].includes(v);
-}
-
 export type CategoryCsvRow = {
   line: number;
   name: string;
@@ -181,14 +156,7 @@ function planCategoryImport(csvText: string): CategoryCsvPlan {
   }
 
   const header = table[0];
-  const col = {
-    name: findColumn(header, HEADER_ALIASES.name),
-    slug: findColumn(header, HEADER_ALIASES.slug),
-    parentSlug: findColumn(header, HEADER_ALIASES.parentSlug),
-    description: findColumn(header, HEADER_ALIASES.description),
-    position: findColumn(header, HEADER_ALIASES.position),
-    isActive: findColumn(header, HEADER_ALIASES.isActive),
-  };
+  const col = columnIndexes(header, CATEGORY_COLUMNS);
 
   if (col.name === -1) {
     return { rows: [], errors: [{ line: 1, message: 'No se encontró la columna "nombre".' }] };
@@ -200,22 +168,22 @@ function planCategoryImport(csvText: string): CategoryCsvPlan {
   for (let i = 1; i < table.length; i++) {
     const raw = table[i];
     const line = i + 1;
-    const name = raw[col.name]?.trim() ?? "";
+    const name = cell(raw, col.name);
     if (!name) {
       errors.push({ line, message: "Falta el nombre." });
       continue;
     }
-    const positionRaw = col.position !== -1 ? (raw[col.position]?.trim() ?? "") : "";
+    const positionRaw = cell(raw, col.position);
     const position = positionRaw ? parseInt(positionRaw, 10) : 0;
 
     rows.push({
       line,
       name,
-      slug: col.slug !== -1 ? slugify(raw[col.slug]?.trim() ?? "") : "",
-      parentSlug: col.parentSlug !== -1 ? slugify(raw[col.parentSlug]?.trim() ?? "") : "",
-      description: col.description !== -1 ? (raw[col.description]?.trim() ?? "") : "",
+      slug: slugify(cell(raw, col.slug)),
+      parentSlug: slugify(cell(raw, col.parentSlug)),
+      description: cell(raw, col.description),
       position: Number.isFinite(position) ? position : 0,
-      isActive: col.isActive !== -1 ? parseActiveFlag(raw[col.isActive] ?? "") : true,
+      isActive: parseActiveFlag(cell(raw, col.isActive)),
     });
   }
 

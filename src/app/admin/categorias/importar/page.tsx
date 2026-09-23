@@ -40,12 +40,25 @@ export default async function ImportarCategorias() {
             archivo o de una categoría ya cargada.
           </li>
         </ul>
-        <a
-          href={`${basePath}/plantilla-categorias.csv`}
-          className="mt-3 inline-block font-semibold text-brand hover:underline"
-        >
-          Descargar plantilla de ejemplo ↓
-        </a>
+        <p className="mt-3">
+          La forma más segura de armar el archivo es{" "}
+          <strong className="text-ink">exportar las categorías</strong>, editarlas en la planilla y
+          volver a subirlas: las columnas son exactamente las mismas.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <a
+            href="/api/admin/export/categorias"
+            className="font-semibold text-brand hover:underline"
+          >
+            Exportar las categorías actuales ↓
+          </a>
+          <a
+            href={`${basePath}/plantilla-categorias.csv`}
+            className="font-semibold text-brand hover:underline"
+          >
+            Descargar plantilla de ejemplo ↓
+          </a>
+        </div>
       </div>
 
       <div className="mt-6">

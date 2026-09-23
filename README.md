@@ -52,6 +52,7 @@ La tienda queda en http://localhost:3000 y Postgres en `localhost:5432`.
 | `npm run db:studio` | Abre Prisma Studio para mirar la base |
 | `npm run db:reset` | Borra la base y la reconstruye desde cero |
 | `npm run typecheck` | Chequeo de tipos |
+| `npm run test:csv` | Verifica la ida y vuelta de exportar/importar el catálogo |
 
 ## Estructura
 
@@ -123,6 +124,40 @@ Las fotos **no las sirve el estático de Next**, las sirve `src/app/uploads/[fil
 
 La ruta solo acepta nombres `[A-Za-z0-9._-]` con extensión de imagen conocida, así que
 no se puede usar para leer otros archivos del server (`/uploads/../../.env` da 404).
+
+## Exportar e importar el catálogo
+
+Categorías y productos se bajan y se suben en CSV, desde los botones de
+*Admin → Categorías* y *Admin → Productos*. **Las columnas que exporta son
+exactamente las que importa**, así que el flujo natural es: exportar, editar en
+la planilla y volver a subir.
+
+Los productos salen con **una fila por variante** — un cuaderno de seis colores
+ocupa seis filas. Las columnas del producto se leen de la primera fila de cada
+uno; las siguientes aportan solo su variante, así que una planilla llena a mano
+con el nombre escrito una sola vez también se entiende.
+
+El `slug` decide qué pasa: si coincide con algo que ya existe, se actualiza; si
+va vacío, se crea. **Nunca borra nada**: una variante o una foto que esté en la
+tienda y no en el archivo se queda como está, y una celda vacía de categoría o
+marca significa "no me meto", no "borrala".
+
+### Cómo se garantiza que las columnas no se desincronicen
+
+`src/lib/catalog-csv.ts` es la única lista de columnas: el exportador escribe el
+`header` de cada una y el importador acepta cualquiera de sus `aliases` (existen
+porque el archivo puede venir del Excel de un proveedor). El exportador arma las
+filas **por nombre de columna**, no por posición, así que mover o agregar una
+columna no puede dejar los valores corridos respecto de la cabecera.
+
+Encima de eso, `npm run test:csv` arma un CSV igual que la ruta de exportación,
+lo vuelve a leer con el importador y compara campo por campo — incluidos los
+casos que rompen un CSV: acentos, comas, comillas y saltos de línea dentro de
+una celda.
+
+> **Los precios van en formato argentino** (`10900,50`), y no es cosmético:
+> `parsePriceToCents` lee el punto como separador de miles, así que exportar
+> `10900.00` haría que al reimportar el precio se multiplique por cien.
 
 ## Instagram en la home
 
