@@ -50,18 +50,43 @@ export default async function PedidosPage({
     <AdminShell adminName={admin.name}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
-        {/* Exporta lo que se está viendo: el filtro de estado viaja en la URL. */}
-        <a
-          href={
-            active.status
-              ? `/api/admin/export/pedidos?estado=${active.key}`
-              : "/api/admin/export/pedidos"
-          }
-          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+        {/* Un form GET apunta directo a la ruta de exportación y el navegador
+            baja el archivo: no hace falta JavaScript. El filtro de estado viaja
+            escondido, así se exporta lo que la persona está viendo. */}
+        <form
+          action="/api/admin/export/pedidos"
+          method="get"
+          className="flex flex-wrap items-end gap-2"
         >
-          Exportar CSV
-        </a>
+          {active.status && <input type="hidden" name="estado" value={active.key} />}
+          <label className="text-xs text-muted">
+            Desde
+            <input
+              type="date"
+              name="desde"
+              className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
+            />
+          </label>
+          <label className="text-xs text-muted">
+            Hasta
+            <input
+              type="date"
+              name="hasta"
+              className="mt-0.5 block rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+          >
+            Exportar CSV
+          </button>
+        </form>
       </div>
+
+      <p className="mt-1 text-xs text-muted">
+        Las fechas son solo para la exportación; si las dejás vacías, baja todo.
+      </p>
 
       <nav className="mt-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (

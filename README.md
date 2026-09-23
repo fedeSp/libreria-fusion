@@ -145,7 +145,11 @@ marca significa "no me meto", no "borrala".
 ### Pedidos: solo exportar
 
 *Admin → Pedidos* tiene su botón de exportar, y **respeta el filtro de estado
-que estés viendo**: si estás en "Pagados", baja los pagados.
+que estés viendo**: si estás en "Pagados", baja los pagados. Al lado hay dos
+campos de fecha (**desde** y **hasta**, opcionales) para bajar un mes puntual;
+el rango se interpreta en hora de Buenos Aires, así que una venta de las 23:00
+del 30 de septiembre cae en septiembre y no en octubre. El nombre del archivo
+lleva el rango, para que bajar dos meses no deje dos archivos iguales.
 
 Sale **una fila por pedido**, no por producto, para que sumar la columna
 `total` dé lo que se vendió de verdad; lo comprado va resumido en la columna

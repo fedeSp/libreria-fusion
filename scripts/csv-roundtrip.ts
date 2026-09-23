@@ -19,7 +19,7 @@ import {
 } from "../src/lib/catalog-csv";
 import { planProductImport } from "../src/lib/product-csv";
 import { ORDER_COLUMNS, ORDER_CSV_HEADER } from "../src/lib/catalog-csv";
-import { formatDateTimeForCsv } from "../src/lib/dates";
+import { formatDateTimeForCsv, startOfDayAR, endOfDayAR } from "../src/lib/dates";
 
 let fallas = 0;
 function check(nombre: string, ok: boolean, detalle = "") {
@@ -186,6 +186,26 @@ const filaPedido = rowFromValues(ORDER_COLUMNS, Object.fromEntries(
 ) as Record<(typeof ORDER_COLUMNS)[number]["key"], string>);
 check("misma cantidad de celdas que de columnas", filaPedido.length === ORDER_CSV_HEADER.length, `${filaPedido.length} vs ${ORDER_CSV_HEADER.length}`);
 check("cada celda cae bajo su columna", ORDER_COLUMNS.every((c, i) => filaPedido[i] === `valor-${c.key}`));
+
+console.log("\n=== pedidos: el rango de fechas se lee en hora de Buenos Aires ===");
+// Buenos Aires es UTC-3 todo el año, asi que el 1 a las 00:00 de aca son las
+// 03:00 UTC del mismo dia. Si se leyera como UTC, un pedido de las 22:00 del 31
+// de agosto entraria en el corte de septiembre.
+check(
+  "desde 01/09 arranca a las 03:00 UTC",
+  startOfDayAR("2026-09-01")?.toISOString() === "2026-09-01T03:00:00.000Z",
+  String(startOfDayAR("2026-09-01")?.toISOString()),
+);
+check(
+  "hasta 30/09 termina a las 02:59:59.999 UTC del 1/10",
+  endOfDayAR("2026-09-30")?.toISOString() === "2026-10-01T02:59:59.999Z",
+  String(endOfDayAR("2026-09-30")?.toISOString()),
+);
+check("una venta de las 23:00 del 30 entra en septiembre",
+  new Date("2026-10-01T02:00:00Z") <= endOfDayAR("2026-09-30")!);
+check("una venta de las 00:30 del 1/10 ya no entra",
+  new Date("2026-10-01T03:30:00Z") > endOfDayAR("2026-09-30")!);
+check("fecha basura se ignora", startOfDayAR("ayer") === null && endOfDayAR("") === null);
 
 console.log(fallas === 0 ? "\nTODO OK\n" : `\n${fallas} FALLAS\n`);
 process.exit(fallas === 0 ? 0 : 1);

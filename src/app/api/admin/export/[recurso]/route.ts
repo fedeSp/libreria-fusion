@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/orders";
 import { CSV_BOM, toCsv } from "@/lib/csv";
 import { formatPriceForCsv } from "@/lib/money";
-import { formatDateTimeForCsv } from "@/lib/dates";
+import { endOfDayAR, formatDateTimeForCsv, startOfDayAR } from "@/lib/dates";
 import { STATUS_LABEL } from "@/components/order-status";
 import {
   CATEGORY_COLUMNS,
@@ -105,14 +105,28 @@ function esEstadoValido(valor: string | null): valor is OrderStatus {
   return valor != null && valor in STATUS_LABEL;
 }
 
-async function pedidosCsv(estado: string | null): Promise<string[][]> {
+async function pedidosCsv(
+  estado: string | null,
+  desde: string | null,
+  hasta: string | null,
+): Promise<string[][]> {
   // Igual que la pantalla de pedidos: primero se caen solos los que vencieron
   // sin pagar, para que la planilla no liste como "esperando pago" algo que en
   // realidad ya está cancelado.
   await expireStaleOrders();
 
+  // El rango se interpreta en hora de Buenos Aires: "desde el 1" es desde las
+  // 00:00 de acá, no del huso del server. Una fecha mal escrita se ignora en
+  // vez de romper la descarga.
+  const gte = startOfDayAR(desde);
+  const lte = endOfDayAR(hasta);
+  const createdAt = { ...(gte && { gte }), ...(lte && { lte }) };
+
   const orders = await db.order.findMany({
-    where: esEstadoValido(estado) ? { status: estado } : {},
+    where: {
+      ...(esEstadoValido(estado) && { status: estado }),
+      ...(Object.keys(createdAt).length > 0 && { createdAt }),
+    },
     orderBy: { number: "desc" },
     include: {
       paymentMethod: { select: { label: true } },
@@ -175,25 +189,32 @@ export async function GET(
 
   const { recurso } = await params;
   let rows: string[][];
+  let desde: string | null = null;
+  let hasta: string | null = null;
 
   if (recurso === "categorias") {
     rows = await categoriasCsv();
   } else if (recurso === "productos") {
     rows = await productosCsv();
   } else if (recurso === "pedidos") {
-    // Mismo parámetro que usa la pantalla, para que el botón exporte lo que la
+    // Mismos parámetros que la pantalla, para que el botón exporte lo que la
     // persona está viendo y no siempre el listado completo.
-    rows = await pedidosCsv(new URL(req.url).searchParams.get("estado"));
+    const q = new URL(req.url).searchParams;
+    desde = q.get("desde");
+    hasta = q.get("hasta");
+    rows = await pedidosCsv(q.get("estado"), desde, hasta);
   } else {
     return new NextResponse("No encontrado", { status: 404 });
   }
 
-  const fecha = new Date().toISOString().slice(0, 10);
+  // El nombre del archivo dice qué rango trae: bajar "septiembre" y "octubre"
+  // no puede dejar dos archivos que se llamen igual en la carpeta de descargas.
+  const rango = startOfDayAR(desde) || endOfDayAR(hasta) ? `${desde || "inicio"}_a_${hasta || "hoy"}` : new Date().toISOString().slice(0, 10);
 
   return new NextResponse(CSV_BOM + toCsv(rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${recurso}-${fecha}.csv"`,
+      "Content-Disposition": `attachment; filename="${recurso}-${rango}.csv"`,
       // Es una foto de la tienda en este momento: que nadie la guarde.
       "Cache-Control": "no-store",
     },
