@@ -1,4 +1,4 @@
-// Contrato de las columnas del CSV del catálogo.
+// Contrato de las columnas de los CSV de la tienda.
 //
 // POR QUÉ ESTE ARCHIVO: exportar e importar tienen que ser la misma cosa en los
 // dos sentidos. Si el exportador tuviera su lista de columnas y el importador
@@ -73,7 +73,36 @@ export const PRODUCT_COLUMNS = [
   },
 ] as const satisfies readonly ColumnSpec[];
 
+// Los pedidos solo se EXPORTAN: son el registro de lo que pasó, y dejar que se
+// reescriban desde una planilla sería reescribir la historia de la tienda. Por
+// eso acá los alias no tienen nada que hacer, pero las columnas viven igual en
+// este módulo para poder armar las filas por nombre y no por posición.
+const soloExport = (key: string, header: string) => ({ key, header, aliases: [header] });
+
+export const ORDER_COLUMNS = [
+  soloExport("number", "numero"),
+  soloExport("date", "fecha"),
+  soloExport("status", "estado"),
+  soloExport("customer", "cliente"),
+  soloExport("email", "email"),
+  soloExport("phone", "telefono"),
+  soloExport("delivery", "entrega"),
+  soloExport("address", "direccion"),
+  soloExport("city", "ciudad"),
+  soloExport("postalCode", "codigo_postal"),
+  soloExport("paymentMethod", "medio_pago"),
+  soloExport("subtotal", "subtotal"),
+  soloExport("total", "total"),
+  soloExport("units", "unidades"),
+  soloExport("items", "productos"),
+  soloExport("note", "nota"),
+  soloExport("paidAt", "pagado_el"),
+  soloExport("pickedUpAt", "retirado_el"),
+  soloExport("providerPaymentId", "pago_mp"),
+] as const satisfies readonly ColumnSpec[];
+
 export const CATEGORY_CSV_HEADER = CATEGORY_COLUMNS.map((c) => c.header);
+export const ORDER_CSV_HEADER = ORDER_COLUMNS.map((c) => c.header);
 export const PRODUCT_CSV_HEADER = PRODUCT_COLUMNS.map((c) => c.header);
 
 /** Varias fotos en una sola celda. Las URLs no llevan espacios, así que no hay ambigüedad. */

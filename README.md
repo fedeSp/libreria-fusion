@@ -125,7 +125,7 @@ Las fotos **no las sirve el estático de Next**, las sirve `src/app/uploads/[fil
 La ruta solo acepta nombres `[A-Za-z0-9._-]` con extensión de imagen conocida, así que
 no se puede usar para leer otros archivos del server (`/uploads/../../.env` da 404).
 
-## Exportar e importar el catálogo
+## Exportar e importar
 
 Categorías y productos se bajan y se suben en CSV, desde los botones de
 *Admin → Categorías* y *Admin → Productos*. **Las columnas que exporta son
@@ -141,6 +141,28 @@ El `slug` decide qué pasa: si coincide con algo que ya existe, se actualiza; si
 va vacío, se crea. **Nunca borra nada**: una variante o una foto que esté en la
 tienda y no en el archivo se queda como está, y una celda vacía de categoría o
 marca significa "no me meto", no "borrala".
+
+### Pedidos: solo exportar
+
+*Admin → Pedidos* tiene su botón de exportar, y **respeta el filtro de estado
+que estés viendo**: si estás en "Pagados", baja los pagados.
+
+Sale **una fila por pedido**, no por producto, para que sumar la columna
+`total` dé lo que se vendió de verdad; lo comprado va resumido en la columna
+`productos` (`2x Cuaderno Éxito E3 (Negro); 1x Tabla A4`). Trae también el id
+del pago en Mercado Pago, para conciliar la planilla contra el resumen de MP sin
+entrar pedido por pedido.
+
+Los nombres de los productos salen de `OrderItem`, que los copió al momento de
+la compra: la planilla dice lo que el cliente compró, no cómo se llama hoy.
+
+**No hay importación de pedidos, y es a propósito**: son el registro de lo que
+pasó, y dejar que se reescriban desde una planilla sería reescribir la historia
+de la tienda — incluido el stock que ya se descontó.
+
+> Las fechas se formatean en hora de **Buenos Aires**, no en la del server, que
+> corre en horario europeo. Sin eso, una venta de las 21:00 de un martes
+> aparecería como del miércoles.
 
 ### Cómo se garantiza que las columnas no se desincronicen
 

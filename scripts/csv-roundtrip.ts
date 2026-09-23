@@ -18,6 +18,8 @@ import {
   rowFromValues,
 } from "../src/lib/catalog-csv";
 import { planProductImport } from "../src/lib/product-csv";
+import { ORDER_COLUMNS, ORDER_CSV_HEADER } from "../src/lib/catalog-csv";
+import { formatDateTimeForCsv } from "../src/lib/dates";
 
 let fallas = 0;
 function check(nombre: string, ok: boolean, detalle = "") {
@@ -162,6 +164,28 @@ const conErrores = [
 const planErr = planProductImport(toCsv(conErrores));
 check("el producto válido entra igual", planErr.products.length === 1, String(planErr.products.length));
 check("se reportan las 2 filas malas", planErr.errors.length === 2, JSON.stringify(planErr.errors.map((e) => e.message)));
+
+console.log("\n=== pedidos: las fechas salen en hora de Buenos Aires ===");
+// 23/09/2026 23:30 UTC son las 20:30 del 23 en Argentina (UTC-3). Si el server
+// formateara con su propia zona (Europa), diria las 01:30 del 24.
+check(
+  "23:30 UTC -> 20:30 del mismo dia",
+  formatDateTimeForCsv(new Date("2026-09-23T23:30:00Z")) === "23/09/2026 20:30",
+  formatDateTimeForCsv(new Date("2026-09-23T23:30:00Z")),
+);
+check(
+  "02:00 UTC -> 23:00 del dia anterior",
+  formatDateTimeForCsv(new Date("2026-09-24T02:00:00Z")) === "23/09/2026 23:00",
+  formatDateTimeForCsv(new Date("2026-09-24T02:00:00Z")),
+);
+check("sin fecha queda vacio", formatDateTimeForCsv(null) === "");
+
+console.log("\n=== pedidos: la fila no se corre respecto de la cabecera ===");
+const filaPedido = rowFromValues(ORDER_COLUMNS, Object.fromEntries(
+  ORDER_COLUMNS.map((c) => [c.key, `valor-${c.key}`]),
+) as Record<(typeof ORDER_COLUMNS)[number]["key"], string>);
+check("misma cantidad de celdas que de columnas", filaPedido.length === ORDER_CSV_HEADER.length, `${filaPedido.length} vs ${ORDER_CSV_HEADER.length}`);
+check("cada celda cae bajo su columna", ORDER_COLUMNS.every((c, i) => filaPedido[i] === `valor-${c.key}`));
 
 console.log(fallas === 0 ? "\nTODO OK\n" : `\n${fallas} FALLAS\n`);
 process.exit(fallas === 0 ? 0 : 1);

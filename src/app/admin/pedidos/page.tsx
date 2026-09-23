@@ -48,7 +48,20 @@ export default async function PedidosPage({
 
   return (
     <AdminShell adminName={admin.name}>
-      <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-extrabold text-ink">Pedidos</h1>
+        {/* Exporta lo que se está viendo: el filtro de estado viaja en la URL. */}
+        <a
+          href={
+            active.status
+              ? `/api/admin/export/pedidos?estado=${active.key}`
+              : "/api/admin/export/pedidos"
+          }
+          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-brand"
+        >
+          Exportar CSV
+        </a>
+      </div>
 
       <nav className="mt-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (

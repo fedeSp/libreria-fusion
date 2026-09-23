@@ -1,25 +1,33 @@
 import { NextResponse } from "next/server";
+import type { OrderStatus } from "@prisma/client";
 import { getAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { expireStaleOrders } from "@/lib/orders";
 import { CSV_BOM, toCsv } from "@/lib/csv";
 import { formatPriceForCsv } from "@/lib/money";
+import { formatDateTimeForCsv } from "@/lib/dates";
+import { STATUS_LABEL } from "@/components/order-status";
 import {
   CATEGORY_COLUMNS,
   CATEGORY_CSV_HEADER,
   PRODUCT_COLUMNS,
   PRODUCT_CSV_HEADER,
+  ORDER_COLUMNS,
+  ORDER_CSV_HEADER,
   IMAGE_SEPARATOR,
   formatFlag,
   rowFromValues,
 } from "@/lib/catalog-csv";
 
-// Exportación del catálogo a CSV.
+// Exportación a CSV: catálogo (categorías y productos) y pedidos.
 //
 // Las filas se arman por NOMBRE de columna (rowFromValues), no por posición, y
 // las cabeceras salen del mismo módulo que usan los importadores. Así lo que
 // escribe esta ruta es, por construcción, lo que el importador sabe leer:
 // bajar el catálogo, editarlo en la planilla y volver a subirlo es una ida y
 // vuelta sin pérdida.
+//
+// Los pedidos NO se importan: son el registro de lo que pasó.
 
 export const dynamic = "force-dynamic";
 
@@ -93,8 +101,72 @@ async function productosCsv(): Promise<string[][]> {
   return rows;
 }
 
+function esEstadoValido(valor: string | null): valor is OrderStatus {
+  return valor != null && valor in STATUS_LABEL;
+}
+
+async function pedidosCsv(estado: string | null): Promise<string[][]> {
+  // Igual que la pantalla de pedidos: primero se caen solos los que vencieron
+  // sin pagar, para que la planilla no liste como "esperando pago" algo que en
+  // realidad ya está cancelado.
+  await expireStaleOrders();
+
+  const orders = await db.order.findMany({
+    where: esEstadoValido(estado) ? { status: estado } : {},
+    orderBy: { number: "desc" },
+    include: {
+      paymentMethod: { select: { label: true } },
+      items: true,
+      // El id del pago en Mercado Pago, para poder conciliar la planilla contra
+      // el resumen de MP sin entrar pedido por pedido.
+      payments: {
+        where: { status: "APROBADO" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { providerPaymentId: true },
+      },
+    },
+  });
+
+  return [
+    [...ORDER_CSV_HEADER],
+    ...orders.map((o) =>
+      rowFromValues(ORDER_COLUMNS, {
+        number: String(o.number),
+        date: formatDateTimeForCsv(o.createdAt),
+        status: STATUS_LABEL[o.status],
+        customer: o.customerName,
+        email: o.customerEmail,
+        phone: o.customerPhone,
+        delivery:
+          o.deliveryMethod === "ENVIO_DOMICILIO" ? "Envío a domicilio" : "Retiro en el local",
+        address: o.shippingAddress ?? "",
+        city: o.shippingCity ?? "",
+        postalCode: o.shippingPostalCode ?? "",
+        paymentMethod: o.paymentMethod?.label ?? "",
+        subtotal: formatPriceForCsv(o.subtotalCents),
+        total: formatPriceForCsv(o.totalCents),
+        units: String(o.items.reduce((n, it) => n + it.quantity, 0)),
+        // Los nombres salen de OrderItem, que los copió al momento de la compra:
+        // la planilla dice lo que el cliente compró, no cómo se llama hoy.
+        items: o.items
+          .map(
+            (it) =>
+              `${it.quantity}x ${it.productName}` +
+              (it.variantName && it.variantName !== "Único" ? ` (${it.variantName})` : ""),
+          )
+          .join("; "),
+        note: o.customerNote ?? "",
+        paidAt: formatDateTimeForCsv(o.paidAt),
+        pickedUpAt: formatDateTimeForCsv(o.pickedUpAt),
+        providerPaymentId: o.payments[0]?.providerPaymentId ?? "",
+      }),
+    ),
+  ];
+}
+
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ recurso: string }> },
 ) {
   if (!(await getAdmin())) {
@@ -104,9 +176,17 @@ export async function GET(
   const { recurso } = await params;
   let rows: string[][];
 
-  if (recurso === "categorias") rows = await categoriasCsv();
-  else if (recurso === "productos") rows = await productosCsv();
-  else return new NextResponse("No encontrado", { status: 404 });
+  if (recurso === "categorias") {
+    rows = await categoriasCsv();
+  } else if (recurso === "productos") {
+    rows = await productosCsv();
+  } else if (recurso === "pedidos") {
+    // Mismo parámetro que usa la pantalla, para que el botón exporte lo que la
+    // persona está viendo y no siempre el listado completo.
+    rows = await pedidosCsv(new URL(req.url).searchParams.get("estado"));
+  } else {
+    return new NextResponse("No encontrado", { status: 404 });
+  }
 
   const fecha = new Date().toISOString().slice(0, 10);
 
@@ -114,7 +194,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${recurso}-${fecha}.csv"`,
-      // Es una foto del catálogo en este momento: que nadie la guarde.
+      // Es una foto de la tienda en este momento: que nadie la guarde.
       "Cache-Control": "no-store",
     },
   });
