@@ -156,6 +156,17 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps migrate   npx tsx s
 Solo toca las variantes **sin** código, así que correrlo dos veces no cambia
 nada la segunda. Se corrió el 23/09/2026 sobre las 96 variantes del catálogo.
 
+## Manual para el local
+
+`docs/Manual del panel - Libreria Fusion.pdf` es el instructivo que se le pasa a
+quien atiende: cómo bajar y subir las planillas, cómo filtrar y exportar pedidos,
+y qué es el SKU. Sin una palabra técnica.
+
+Se genera con `python scripts/manual-panel.py`. Las capturas viven en
+`docs/capturas/`; si falta alguna, en su lugar queda un recuadro que dice cuál es,
+así el PDF siempre se puede regenerar aunque las fotos no estén al día. Necesita
+`pip install reportlab pillow`.
+
 ## Exportar e importar
 
 Categorías y productos se bajan y se suben en CSV, desde los botones de
