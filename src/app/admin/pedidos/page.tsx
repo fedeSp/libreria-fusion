@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/money";
 import { expireStaleOrders } from "@/lib/orders";
-import { startOfDayAR, endOfDayAR } from "@/lib/dates";
+import { startOfDayAR, endOfDayAR, formatDateAR } from "@/lib/dates";
 import { AdminShell } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/order-status";
 
@@ -198,7 +198,7 @@ export default async function PedidosPage({
                     {formatPrice(o.totalCents)}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {o.createdAt.toLocaleDateString("es-AR")}
+                    {formatDateAR(o.createdAt)}
                   </td>
                 </tr>
               ))}

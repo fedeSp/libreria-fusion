@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { OrderStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatDateTimeAR } from "@/lib/dates";
 import { formatPrice } from "@/lib/money";
 import { whatsappUrl, getSettings } from "@/lib/settings";
 import { expireStaleOrders } from "@/lib/orders";
@@ -61,7 +62,7 @@ export default async function PedidoDetalle({
         </Link>
       </div>
       <p className="mt-1 text-sm text-muted">
-        Creado el {order.createdAt.toLocaleString("es-AR")}
+        Creado el {formatDateTimeAR(order.createdAt)}
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -169,10 +170,10 @@ export default async function PedidoDetalle({
               </p>
             )}
             {order.paidAt && (
-              <p className="text-muted">Pagado: {order.paidAt.toLocaleString("es-AR")}</p>
+              <p className="text-muted">Pagado: {formatDateTimeAR(order.paidAt)}</p>
             )}
             {order.pickedUpAt && (
-              <p className="text-muted">Retirado: {order.pickedUpAt.toLocaleString("es-AR")}</p>
+              <p className="text-muted">Retirado: {formatDateTimeAR(order.pickedUpAt)}</p>
             )}
           </div>
         </aside>

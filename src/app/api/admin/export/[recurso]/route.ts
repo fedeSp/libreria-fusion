@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/orders";
 import { CSV_BOM, toCsv } from "@/lib/csv";
 import { formatPriceForCsv } from "@/lib/money";
-import { endOfDayAR, formatDateTimeForCsv, startOfDayAR } from "@/lib/dates";
+import { endOfDayAR, formatDateTimeAR, startOfDayAR } from "@/lib/dates";
 import { STATUS_LABEL } from "@/components/order-status";
 import {
   CATEGORY_COLUMNS,
@@ -147,7 +147,7 @@ async function pedidosCsv(
     ...orders.map((o) =>
       rowFromValues(ORDER_COLUMNS, {
         number: String(o.number),
-        date: formatDateTimeForCsv(o.createdAt),
+        date: formatDateTimeAR(o.createdAt),
         status: STATUS_LABEL[o.status],
         customer: o.customerName,
         email: o.customerEmail,
@@ -171,8 +171,8 @@ async function pedidosCsv(
           )
           .join("; "),
         note: o.customerNote ?? "",
-        paidAt: formatDateTimeForCsv(o.paidAt),
-        pickedUpAt: formatDateTimeForCsv(o.pickedUpAt),
+        paidAt: formatDateTimeAR(o.paidAt),
+        pickedUpAt: formatDateTimeAR(o.pickedUpAt),
         providerPaymentId: o.payments[0]?.providerPaymentId ?? "",
       }),
     ),

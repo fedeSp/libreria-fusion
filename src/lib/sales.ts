@@ -1,6 +1,7 @@
 import "server-only";
 import type { OrderStatus } from "@prisma/client";
 import { db } from "./db";
+import { dayKeyAR } from "./dates";
 
 // Estadísticas de ventas para el panel. Todo se deriva de Order/OrderItem en
 // vivo, sin tablas propias — igual que alerts.ts.
@@ -39,8 +40,10 @@ function startOf(days: number, end: Date): Date {
   return d;
 }
 
+// El dia al que pertenece una venta es el de acá, no el UTC: si no, todo lo
+// vendido después de las 21:00 se contaba en la barra del dia siguiente.
 function dayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return dayKeyAR(d);
 }
 
 export async function getSalesDashboard(days: RangeDays): Promise<SalesDashboard> {

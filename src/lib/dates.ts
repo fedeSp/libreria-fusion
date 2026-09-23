@@ -1,12 +1,15 @@
-// Fechas para exportar.
+// Fechas de la tienda, siempre en hora de Buenos Aires.
 //
-// El VPS corre en horario europeo, así que formatear con la zona del server
-// haría que una venta de las 21:00 de un martes en Villa Bosch apareciera como
-// del miércoles. La zona va fija a Buenos Aires: el que lee la planilla está
-// acá, no donde esté alojada la máquina.
+// POR QUÉ EXISTE ESTE ARCHIVO: el VPS corre en horario europeo y el contenedor
+// en UTC. Formatear con la zona del runtime hace que una venta de las 21:00 de
+// un martes en Villa Bosch aparezca como del miércoles — en la grilla, en el
+// comprobante que se imprime, en el CSV y en el gráfico de ventas. Todo lo que
+// muestre o agrupe fechas pasa por acá.
 
-const formatoArgentino = new Intl.DateTimeFormat("es-AR", {
-  timeZone: "America/Argentina/Buenos_Aires",
+const TZ_AR = "America/Argentina/Buenos_Aires";
+
+const fechaYHora = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ_AR,
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
@@ -15,10 +18,37 @@ const formatoArgentino = new Intl.DateTimeFormat("es-AR", {
   hour12: false,
 });
 
+const soloFecha = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ_AR,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+// en-CA da "2026-09-23", que es la forma que se ordena sola y la que usan las
+// claves del gráfico de ventas.
+const claveDeDia = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ_AR,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /** "23/09/2026 14:05". Vacío si no hay fecha. */
-export function formatDateTimeForCsv(date: Date | null | undefined): string {
+export function formatDateTimeAR(date: Date | null | undefined): string {
   if (!date) return "";
-  return formatoArgentino.format(date).replace(", ", " ");
+  return fechaYHora.format(date).replace(", ", " ");
+}
+
+/** "23/09/2026". Vacío si no hay fecha. */
+export function formatDateAR(date: Date | null | undefined): string {
+  if (!date) return "";
+  return soloFecha.format(date);
+}
+
+/** "2026-09-23": el día al que pertenece ese instante acá, para agrupar. */
+export function dayKeyAR(date: Date): string {
+  return claveDeDia.format(date);
 }
 
 // Argentina no tiene horario de verano desde 2009, asi que el desfase es fijo.

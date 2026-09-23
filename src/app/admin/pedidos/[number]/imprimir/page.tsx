@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatDateTimeAR } from "@/lib/dates";
 import { formatPrice } from "@/lib/money";
 import { getSettings } from "@/lib/settings";
 import { PrintButton } from "@/components/print-button";
@@ -50,7 +51,7 @@ export default async function ImprimirPedido({
 
         <div className="mt-3 border-t border-dashed border-line pt-3 text-center">
           <p className="text-xl font-extrabold text-ink">Pedido #{order.number}</p>
-          <p className="text-xs text-muted">{order.createdAt.toLocaleString("es-AR")}</p>
+          <p className="text-xs text-muted">{formatDateTimeAR(order.createdAt)}</p>
         </div>
 
         <div className="mt-3 border-t border-dashed border-line pt-3">

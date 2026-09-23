@@ -19,7 +19,7 @@ import {
 } from "../src/lib/catalog-csv";
 import { planProductImport } from "../src/lib/product-csv";
 import { ORDER_COLUMNS, ORDER_CSV_HEADER } from "../src/lib/catalog-csv";
-import { formatDateTimeForCsv, startOfDayAR, endOfDayAR } from "../src/lib/dates";
+import { formatDateTimeAR, formatDateAR, dayKeyAR, startOfDayAR, endOfDayAR } from "../src/lib/dates";
 
 let fallas = 0;
 function check(nombre: string, ok: boolean, detalle = "") {
@@ -170,15 +170,27 @@ console.log("\n=== pedidos: las fechas salen en hora de Buenos Aires ===");
 // formateara con su propia zona (Europa), diria las 01:30 del 24.
 check(
   "23:30 UTC -> 20:30 del mismo dia",
-  formatDateTimeForCsv(new Date("2026-09-23T23:30:00Z")) === "23/09/2026 20:30",
-  formatDateTimeForCsv(new Date("2026-09-23T23:30:00Z")),
+  formatDateTimeAR(new Date("2026-09-23T23:30:00Z")) === "23/09/2026 20:30",
+  formatDateTimeAR(new Date("2026-09-23T23:30:00Z")),
 );
 check(
   "02:00 UTC -> 23:00 del dia anterior",
-  formatDateTimeForCsv(new Date("2026-09-24T02:00:00Z")) === "23/09/2026 23:00",
-  formatDateTimeForCsv(new Date("2026-09-24T02:00:00Z")),
+  formatDateTimeAR(new Date("2026-09-24T02:00:00Z")) === "23/09/2026 23:00",
+  formatDateTimeAR(new Date("2026-09-24T02:00:00Z")),
 );
-check("sin fecha queda vacio", formatDateTimeForCsv(null) === "");
+check("sin fecha queda vacio", formatDateTimeAR(null) === "");
+// Lo mismo para la grilla y para el grafico: una venta de las 21:00 del 6 en
+// Villa Bosch es del 6, aunque en UTC ya sea 7.
+check(
+  "la grilla muestra el dia argentino",
+  formatDateAR(new Date("2026-09-07T00:30:00Z")) === "06/09/2026",
+  formatDateAR(new Date("2026-09-07T00:30:00Z")),
+);
+check(
+  "el grafico la agrupa en el mismo dia",
+  dayKeyAR(new Date("2026-09-07T00:30:00Z")) === "2026-09-06",
+  dayKeyAR(new Date("2026-09-07T00:30:00Z")),
+);
 
 console.log("\n=== pedidos: la fila no se corre respecto de la cabecera ===");
 const filaPedido = rowFromValues(ORDER_COLUMNS, Object.fromEntries(
