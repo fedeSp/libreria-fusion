@@ -97,7 +97,10 @@ export default async function HomePage() {
                   // Con foto, el nombre NO va encima: sobre una imagen
                   // cualquiera no hay color de texto que garantice contraste,
                   // y el nombre ya está justo abajo, en tinta sobre blanco.
-                  <div className="relative h-40">
+                  // 5:4, la proporción en la que vienen diseñadas las piezas:
+                  // con la tarjeta apaisada de antes, object-cover les comía el
+                  // nombre de la categoría por arriba y por abajo.
+                  <div className="relative aspect-[5/4]">
                     <Image
                       src={c.imageUrl}
                       alt=""
@@ -108,7 +111,7 @@ export default async function HomePage() {
                   </div>
                 ) : (
                   <div
-                    className={`flex h-40 items-center justify-center ${tints[i % tints.length]}`}
+                    className={`flex aspect-[5/4] items-center justify-center ${tints[i % tints.length]}`}
                   >
                     <span className="text-2xl font-extrabold uppercase tracking-wide text-white">
                       {c.name}
