@@ -156,6 +156,31 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps migrate   npx tsx s
 Solo toca las variantes **sin** código, así que correrlo dos veces no cambia
 nada la segunda. Se corrió el 23/09/2026 sobre las 96 variantes del catálogo.
 
+## Portada: carrusel y fotos de categoría
+
+*Admin → Portada* carga las imágenes que se van pasando arriba de todo en la
+home. El texto de cada promo va **adentro de la imagen**, no encima: así el
+local arma la pieza entera donde le resulte cómodo y la sube hecha, sin que
+nadie toque código para cambiar una tipografía. Medida recomendada 1200 × 450.
+Cada imagen puede llevar un link opcional, y se ordenan, ocultan y borran desde
+la misma pantalla.
+
+**Si no hay ninguna imagen cargada, la home muestra el saludo de texto de
+siempre.** La portada nunca queda hueca arriba, que es el estado en el que
+quedaría una tienda recién instalada o una a la que le borraron los banners.
+
+El carrusel (`src/components/hero-slider.tsx`) se frena solo al pasar el mouse
+o al tabular adentro, respeta *reducir movimiento* del sistema operativo — ahí
+no avanza solo— y con una sola imagen no dibuja flechas ni puntos: es un banner.
+Las imágenes que no se están viendo salen del recorrido del tabulador y del
+lector de pantalla.
+
+Las **categorías** ya tenían campo de imagen y subida en su formulario, pero la
+home los ignoraba y pintaba un bloque de color plano. Ahora, si la categoría
+tiene foto, la tarjeta la muestra; si no, vuelve el bloque de color. El nombre
+**no** se superpone a la foto: sobre una imagen cualquiera no hay color de texto
+que garantice contraste, y el nombre ya está justo abajo en tinta sobre blanco.
+
 ## Manual para el local
 
 `docs/Manual del panel - Libreria Fusion.pdf` es el instructivo que se le pasa a

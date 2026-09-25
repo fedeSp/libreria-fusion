@@ -125,6 +125,29 @@ model ProductVariant {
   @@index([productId, position])
 }
 
+// Imágenes del carrusel de la portada.
+//
+// El texto va ADENTRO de la imagen, no encima: así el local arma la promo
+// entera donde le resulte cómodo y la sube hecha, sin depender de que alguien
+// toque el código para cambiar una tipografía o una bajada.
+model HeroSlide {
+  id       String  @id @default(cuid())
+  imageUrl String
+  // Obligatorio: si la promo dice algo, quien no ve la imagen también tiene
+  // que enterarse. Misma regla que ProductImage.
+  alt      String
+  // A dónde lleva el banner. Vacío = no es clickeable.
+  linkUrl  String?
+
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, position])
+}
+
 // ---------------------------------------------------------------- pedidos
 
 enum OrderStatus {

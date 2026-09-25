@@ -29,6 +29,7 @@ const NAV_GROUPS = [
   {
     label: "Configuración",
     items: [
+      { href: "/admin/portada", label: "Portada" },
       { href: "/admin/metodos-pago", label: "Medios de pago" },
       { href: "/admin/preguntas-frecuentes", label: "Preguntas frecuentes" },
       { href: "/admin/ajustes", label: "Ajustes" },

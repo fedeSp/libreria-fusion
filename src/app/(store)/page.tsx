@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/lib/db";
 import { ProductCard } from "@/components/product-card";
 import { PickupNotice } from "@/components/pickup-notice";
+import { HeroSlider } from "@/components/hero-slider";
 import { InstagramFeed } from "@/components/instagram-feed";
 
 // Catálogo y home se releen seguido pero no en cada request.
@@ -17,7 +19,12 @@ const CARD_SELECT = {
 } as const;
 
 export default async function HomePage() {
-  const [categories, featured, latest] = await Promise.all([
+  const [slides, categories, featured, latest] = await Promise.all([
+    db.heroSlide.findMany({
+      where: { isActive: true },
+      orderBy: { position: "asc" },
+      select: { id: true, imageUrl: true, alt: true, linkUrl: true },
+    }),
     db.category.findMany({
       where: { isActive: true, parentId: null },
       orderBy: { position: "asc" },
@@ -42,7 +49,12 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="border-b border-line bg-brand-softer">
+      {slides.length > 0 ? (
+        <HeroSlider slides={slides} />
+      ) : (
+        // Sin imágenes cargadas la portada no puede quedar hueca arriba: vuelve
+        // el saludo de siempre, que además explica cómo funciona la tienda.
+        <section className="border-b border-line bg-brand-softer">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
           <h1 className="max-w-2xl text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
             Todo para el aula, la oficina y el negocio
@@ -66,7 +78,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
-      </section>
+        </section>
+      )}
 
       {categories.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 py-12">
@@ -80,13 +93,28 @@ export default async function HomePage() {
                 href={`/categoria/${c.slug}`}
                 className="group overflow-hidden rounded-xl border border-line bg-white transition hover:border-brand/40 hover:shadow-md"
               >
-                <div
-                  className={`flex h-40 items-center justify-center ${tints[i % tints.length]}`}
-                >
-                  <span className="text-2xl font-extrabold uppercase tracking-wide text-white">
-                    {c.name}
-                  </span>
-                </div>
+                {c.imageUrl ? (
+                  // Con foto, el nombre NO va encima: sobre una imagen
+                  // cualquiera no hay color de texto que garantice contraste,
+                  // y el nombre ya está justo abajo, en tinta sobre blanco.
+                  <div className="relative h-40">
+                    <Image
+                      src={c.imageUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover transition duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`flex h-40 items-center justify-center ${tints[i % tints.length]}`}
+                  >
+                    <span className="text-2xl font-extrabold uppercase tracking-wide text-white">
+                      {c.name}
+                    </span>
+                  </div>
+                )}
                 <div className="p-4">
                   <h3 className="font-semibold text-ink group-hover:text-brand">
                     Línea {c.name}
