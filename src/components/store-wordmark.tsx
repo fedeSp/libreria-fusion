@@ -30,7 +30,9 @@ export function StoreWordmark({ name }: { name: string }) {
       <span className="sr-only">{name}</span>
 
       <span aria-hidden="true" className="inline-flex items-baseline gap-1.5">
-        {resto && <span className="text-white">{resto}</span>}
+        {/* Verde agua: el mismo del fondo del isologo. El blanco competía
+            con las letras de colores en vez de dejarlas brillar. */}
+        {resto && <span className="text-logo-verde">{resto}</span>}
         <span>
           {[...ultima].map((letra, i) => (
             <span key={`${letra}-${i}`} className={COLORES[i % COLORES.length]}>

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ProductCard } from "@/components/product-card";
 import { PickupNotice } from "@/components/pickup-notice";
 import { HeroSlider } from "@/components/hero-slider";
+import { NegocioJsonLd } from "@/components/structured-data";
 import { InstagramFeed } from "@/components/instagram-feed";
 
 // Catálogo y home se releen seguido pero no en cada request.
@@ -49,6 +50,8 @@ export default async function HomePage() {
 
   return (
     <>
+      <NegocioJsonLd />
+
       {slides.length > 0 ? (
         <HeroSlider slides={slides} />
       ) : (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TIENDA_INDEXABLE } from "@/lib/seo";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -16,8 +17,9 @@ export const metadata: Metadata = {
     locale: "es_AR",
     siteName: "Librería Fusión",
   },
-  // Mientras el checkout no está terminado la tienda no debe aparecer en Google.
-  robots: { index: false, follow: false },
+  // Un solo interruptor, en lib/seo, que también maneja robots.txt: no pueden
+  // quedar diciendo cosas distintas.
+  robots: TIENDA_INDEXABLE ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 // Layout raíz mínimo: solo html/body y estilos. El chrome de la tienda vive en

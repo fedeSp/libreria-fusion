@@ -1,3 +1,0 @@
-# Tienda en preparación: no indexar mientras el checkout no esté terminado.
-User-agent: *
-Disallow: /

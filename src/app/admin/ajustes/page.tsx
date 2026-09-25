@@ -25,6 +25,12 @@ const FIELDS: {
   { key: "store.phone", label: "Teléfono (para mostrar)" },
   { key: "store.whatsapp", label: "WhatsApp (solo números, con código país)" },
   { key: "store.email", label: "Email" },
+  {
+    key: "store.provincia",
+    label: "Provincia",
+    hint: "Para que Google entienda dónde queda el local. No se muestra en la tienda.",
+  },
+  { key: "store.codigoPostal", label: "Código postal" },
   { key: "pickup.notice", label: "Aviso de retiro (título)", area: true },
   { key: "pickup.detail", label: "Aviso de retiro (detalle)", area: true },
   { key: "instagram.url", label: "URL de Instagram" },

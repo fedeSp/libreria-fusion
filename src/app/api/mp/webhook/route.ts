@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { aplicarPago } from "@/lib/orders";
 import { getPayment } from "@/lib/mercadopago";
 import { notifyAdminNewOrder } from "@/lib/email";
 import type { PaymentStatus } from "@prisma/client";
@@ -98,56 +99,26 @@ export async function POST(req: NextRequest) {
 
     const status = mapStatus(payment.status);
 
-    // Marca si en esta notificación el pedido recién pasa a PAGADO, para mandar
-    // el mail al admin una sola vez, fuera de la transacción.
-    let justPaid = false;
-
-    await db.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { id: orderId } });
-      if (!order) return;
-
-      // Idempotencia: registramos/actualizamos el pago por su id de MP.
-      await tx.payment.upsert({
-        where: { providerPaymentId: payment.id },
-        create: {
-          orderId,
-          paymentMethodId: order.paymentMethodId,
-          status,
-          amountCents: payment.amountCents,
-          providerPaymentId: payment.id,
-          providerStatus: payment.status,
-        },
-        update: { status, providerStatus: payment.status },
-      });
-
-      // La transición a PAGADO ocurre una sola vez: solo si el pago está
-      // aprobado y el pedido todavía no fue marcado como pagado.
-      if (status === "APROBADO" && order.status === "PENDIENTE_PAGO") {
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: "PAGADO", paidAt: new Date() },
-        });
-        justPaid = true;
-        // Descontamos stock recién con el pago confirmado, no antes.
-        const items = await tx.orderItem.findMany({ where: { orderId } });
-        for (const it of items) {
-          if (it.variantId) {
-            await tx.productVariant.update({
-              where: { id: it.variantId },
-              data: { stock: { decrement: it.quantity } },
-            });
-          }
-        }
-      }
-
-      // Pago rechazado/cancelado sobre un pedido aún pendiente: lo cancelamos.
-      if (status === "RECHAZADO" && order.status === "PENDIENTE_PAGO") {
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: "CANCELADO" },
-        });
-      }
+    // Todo lo que toca el pedido y el stock vive en lib/orders: el webhook
+    // solo traduce lo que dijo Mercado Pago. Así esa parte se puede testear
+    // sin levantar un servidor ni hablar con MP.
+    const { reciénPagado, sobrevendidas } = await aplicarPago(orderId, {
+      id: payment.id,
+      estado: status,
+      estadoProveedor: payment.status,
+      montoCents: payment.amountCents,
     });
+
+    // Se cobró algo de lo que no había stock. El pedido queda pagado igual —el
+    // cliente ya puso la plata— pero tiene que quedar rastro de que hay que
+    // conseguir la mercadería o devolverle.
+    for (const s of sobrevendidas) {
+      console.error(
+        `SOBREVENTA en el pedido ${orderId}: se vendieron ${s.pedidas} de "${s.producto}" y había ${s.habia}.`,
+      );
+    }
+
+    const justPaid = reciénPagado;
 
     // Mail al admin cuando la compra se confirma. Fuera de la transacción y
     // sin await bloqueante del éxito: si el mail falla, el pago ya quedó

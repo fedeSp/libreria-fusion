@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SITE_URL } from "@/lib/seo";
 import { db } from "@/lib/db";
 import { formatPrice, installment } from "@/lib/money";
 import { PickupNotice } from "@/components/pickup-notice";
@@ -81,12 +82,16 @@ export default async function ProductPage({ params }: Props) {
     "@type": "Product",
     name: product.name,
     description: product.summary ?? product.description ?? undefined,
-    image: product.images.map((i) => i.url),
+    // Absolutas: Google descarta las imágenes relativas.
+    image: product.images.map((i) => (i.url.startsWith("http") ? i.url : `${SITE_URL}${i.url}`)),
     brand: product.brand ? { "@type": "Brand", name: product.brand.name } : undefined,
+    sku: product.variants.find((v) => v.sku)?.sku ?? undefined,
     offers: {
       "@type": "Offer",
+      url: `${SITE_URL}/productos/${product.slug}`,
       priceCurrency: "ARS",
       price: (minPrice / 100).toFixed(2),
+      itemCondition: "https://schema.org/NewCondition",
       availability:
         totalStock > 0
           ? "https://schema.org/InStock"

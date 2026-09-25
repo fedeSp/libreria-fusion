@@ -192,6 +192,29 @@ Se genera con `python scripts/manual-panel.py`. Las capturas viven en
 así el PDF siempre se puede regenerar aunque las fotos no estén al día. Necesita
 `pip install reportlab pillow`.
 
+## Backups de la base
+
+`scripts/backup-db.sh` corre por cron todos los días a las 03:15 del server
+(22:15 en Argentina, después de que cierra el local). Rotación abuelo-padre-hijo:
+los diarios se acumulan, el domingo el del día pasa a **semanal** y se limpian
+los diarios, y al llegar a 4 semanales el más nuevo pasa a **mensual**. Se
+guardan 12 mensuales.
+
+Antes de rotar, el script verifica que el dump descomprima y tenga el marcador
+final de `pg_dump`. Si no, falla y **no borra nada**: el peor backup es el que
+parece estar y no está.
+
+Restaurar (pisa la base actual):
+
+```bash
+gunzip -c /opt/libreria-fusion/backups/diarios/fusion-AAAA-MM-DD.sql.gz   | docker exec -i fusion-prod-db psql -U fusion -d fusion
+```
+
+> **Lo que esto NO cubre:** los backups viven en el mismo disco que la base.
+> Protegen contra "se borró una tabla" o "una importación salió mal", no contra
+> que se muera el VPS. Copiarlos afuera (R2, S3, otra máquina) es el paso que
+> falta.
+
 ## Exportar e importar
 
 Categorías y productos se bajan y se suben en CSV, desde los botones de

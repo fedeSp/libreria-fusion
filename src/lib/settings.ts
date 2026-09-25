@@ -11,6 +11,10 @@ const DEFAULTS: Record<string, string> = {
   "store.address": "Santos Vega 7196, Villa Bosch — Tres de Febrero",
   "store.hours": "Lunes a viernes de 9 a 13 y de 16 a 19:30 · Sábados de 9 a 13",
   "store.cuit": "27240307583",
+  // Usados por los datos estructurados que lee Google. No se muestran en
+  // la tienda: la dirección visible sigue siendo store.address.
+  "store.provincia": "Buenos Aires",
+  "store.codigoPostal": "1682",
   "pickup.notice": "Retirá en el local o pedí envío a domicilio.",
   "pickup.detail":
     "Cuando tu pedido esté listo te avisamos por WhatsApp o mail. Lo guardamos 7 días desde el aviso.",

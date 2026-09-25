@@ -1,4 +1,5 @@
 import "server-only";
+import type { PaymentStatus } from "@prisma/client";
 import { db } from "./db";
 
 // Vencimiento de pedidos sin pagar. No hay cron en esta app — todo se
@@ -12,4 +13,90 @@ export async function expireStaleOrders(): Promise<number> {
     data: { status: "CANCELADO" },
   });
   return result.count;
+}
+
+export type ResultadoDePago = {
+  /** true solo la vez que el pedido pasa de esperando-pago a pagado. */
+  reciénPagado: boolean;
+  /** Variantes que se vendieron por encima del stock que había. */
+  sobrevendidas: { variantId: string; producto: string; pedidas: number; habia: number }[];
+};
+
+/**
+ * Aplica a un pedido lo que Mercado Pago informó sobre un pago.
+ *
+ * VIVE ACÁ Y NO EN EL WEBHOOK a propósito: dentro del route handler solo se
+ * podía probar levantando un servidor y hablando con Mercado Pago de verdad.
+ * Separada, el recorrido que toca la plata —confirmar, descontar stock, no
+ * descontarlo dos veces— se puede testear contra una base y nada más.
+ *
+ * Es idempotente: el pago se registra por su id de Mercado Pago y la transición
+ * a PAGADO ocurre una sola vez, por más que MP reintente la notificación.
+ */
+export async function aplicarPago(
+  orderId: string,
+  pago: { id: string; estado: PaymentStatus; estadoProveedor: string; montoCents: number },
+): Promise<ResultadoDePago> {
+  let reciénPagado = false;
+  const sobrevendidas: ResultadoDePago["sobrevendidas"] = [];
+
+  await db.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: orderId } });
+    if (!order) return;
+
+    await tx.payment.upsert({
+      where: { providerPaymentId: pago.id },
+      create: {
+        orderId,
+        paymentMethodId: order.paymentMethodId,
+        status: pago.estado,
+        amountCents: pago.montoCents,
+        providerPaymentId: pago.id,
+        providerStatus: pago.estadoProveedor,
+      },
+      update: { status: pago.estado, providerStatus: pago.estadoProveedor },
+    });
+
+    if (pago.estado === "APROBADO" && order.status === "PENDIENTE_PAGO") {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: "PAGADO", paidAt: new Date() },
+      });
+      reciénPagado = true;
+
+      // El stock se descuenta recién con el pago confirmado, nunca antes.
+      const items = await tx.orderItem.findMany({ where: { orderId } });
+      for (const it of items) {
+        if (!it.variantId) continue;
+
+        // GREATEST(0, ...) en vez de un decrement a secas: si dos personas
+        // compran la última unidad casi a la vez, las dos pasan por acá y el
+        // stock terminaba en negativo. El FROM devuelve el valor previo, que
+        // es lo único que permite darse cuenta de que hubo sobreventa.
+        const filas = await tx.$queryRaw<{ antes: number }[]>`
+          UPDATE "ProductVariant" v
+          SET stock = GREATEST(0, v.stock - ${it.quantity})
+          FROM "ProductVariant" previo
+          WHERE v.id = ${it.variantId} AND previo.id = v.id
+          RETURNING previo.stock AS antes
+        `;
+
+        const antes = filas[0]?.antes;
+        if (antes !== undefined && antes < it.quantity) {
+          sobrevendidas.push({
+            variantId: it.variantId,
+            producto: `${it.productName} (${it.variantName})`,
+            pedidas: it.quantity,
+            habia: antes,
+          });
+        }
+      }
+    }
+
+    if (pago.estado === "RECHAZADO" && order.status === "PENDIENTE_PAGO") {
+      await tx.order.update({ where: { id: orderId }, data: { status: "CANCELADO" } });
+    }
+  });
+
+  return { reciénPagado, sobrevendidas };
 }

@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:csv && npm run test:sku",
+    "test:checkout": "node --import tsx --conditions=react-server scripts/checkout-test.ts",
     "test:csv": "tsx scripts/csv-roundtrip.ts",
     "test:sku": "tsx scripts/sku-check.ts",
     "db:generate": "prisma generate",
