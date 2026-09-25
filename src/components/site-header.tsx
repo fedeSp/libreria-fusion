@@ -2,6 +2,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { PickupNotice } from "./pickup-notice";
 import { CartBadge } from "./cart-badge";
+import { StoreWordmark } from "./store-wordmark";
+import { getSettings } from "@/lib/settings";
 
 // Los <Link> de Next prefijan el basePath solos, pero el action de un <form>
 // no: hay que anteponérselo a mano cuando la tienda vive bajo /libreria.
@@ -11,6 +13,8 @@ export async function SiteHeader() {
   // El menú se arma desde las categorías reales de la base. En la tienda vieja
   // el link "Productos" apuntaba a una categoría vacía y nadie se enteró:
   // acá no hay destinos escritos a mano que puedan quedar desactualizados.
+  const settings = await getSettings();
+
   const categories = await db.category
     .findMany({
       where: { isActive: true, parentId: null },
@@ -25,11 +29,10 @@ export async function SiteHeader() {
 
       <div className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-4">
-          <Link
-            href="/"
-            className="text-xl font-extrabold tracking-tight text-brand"
-          >
-            Librería Fusión
+          {/* El nombre sale de Ajustes, no escrito acá: si el local lo
+              cambia, el título lo acompaña. */}
+          <Link href="/" className="shrink-0">
+            <StoreWordmark name={settings["store.name"]} />
           </Link>
 
           <form

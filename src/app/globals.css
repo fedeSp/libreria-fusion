@@ -27,6 +27,23 @@
   --color-accent-green: #0e9f6e;
   --color-accent-yellow: #f5b301;
 
+  /* Colores del logo, para el título de la tienda.
+
+     Van sobre un fondo azul oscuro, no sobre el blanco del header, y esa es la
+     razón de que puedan ser los del isologo. Sobre blanco no sirven como texto:
+     medidos dan amarillo 1.81:1, celeste 2.29:1 y verde 3.30:1, cuando AA pide
+     4.5 — el amarillo es incluso peor que el 1.53:1 que arruinaba la tienda
+     vieja. Sobre este azul pasan todos: rosa 5.6, celeste 6.1, amarillo 7.7,
+     verde 6.2, blanco 14.2.
+
+     El único retocado es el rosa: el original (#E0218A) queda en el medio y
+     falla contra blanco Y contra oscuro, así que se aclaró hasta pasar. */
+  --color-logo-fondo: #14275c;
+  --color-logo-rosa: #ff6fb5;
+  --color-logo-celeste: #29b6e8;
+  --color-logo-amarillo: #f5b301;
+  --color-logo-verde: #3fbfa0;
+
   --color-success: #12805c;
   --color-danger: #b3261e;
 
