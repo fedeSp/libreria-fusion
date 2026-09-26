@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { aplicarPago } from "@/lib/orders";
 import { getPayment } from "@/lib/mercadopago";
-import { notifyAdminNewOrder } from "@/lib/email";
+import { notifyAdminNewOrder, notifyCustomerOrderPaid } from "@/lib/email";
 import type { PaymentStatus } from "@prisma/client";
 
 // Mercado Pago llama a esta URL cuando cambia el estado de un pago. Nunca
@@ -129,7 +129,13 @@ export async function POST(req: NextRequest) {
           where: { id: orderId },
           include: { items: true },
         });
-        if (paid) await notifyAdminNewOrder(paid);
+        if (paid) {
+          // Los dos avisos del momento del pago: el local se entera de que
+          // tiene algo para preparar, y el cliente de que su plata llegó. Hasta
+          // ahora el cliente no recibía nada y solo le quedaba la pantalla.
+          await notifyAdminNewOrder(paid);
+          await notifyCustomerOrderPaid(paid);
+        }
       } catch (mailErr) {
         console.error("No se pudo enviar el mail de aviso:", mailErr);
       }

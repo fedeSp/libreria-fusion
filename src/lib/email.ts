@@ -93,3 +93,128 @@ export async function notifyAdminNewOrder(order: OrderForEmail): Promise<void> {
 
   await send(to, `🛒 Pedido #${order.number} pagado — Librería Fusión`, html);
 }
+
+// ---------------------------------------------------------------- al cliente
+//
+// Todo lo que le llega a quien compró. Comparten el mismo marco (encabezado,
+// datos del local, pie) para que no haya que acordarse de repetir la dirección
+// en cada plantilla y para que los tres mails se vean de la misma familia.
+
+const VERDE = "#0b6b4a";
+
+function filasDeItems(order: OrderForEmail): string {
+  return order.items
+    .map(
+      (it) =>
+        `<tr><td style="padding:6px 8px;border-bottom:1px solid #f0edf0">${it.quantity}× ${
+          it.productName
+        }${it.variantName !== "Único" ? ` (${it.variantName})` : ""}</td>` +
+        `<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f0edf0">${formatPrice(
+          it.lineTotalCents,
+        )}</td></tr>`,
+    )
+    .join("");
+}
+
+async function marco(titulo: string, cuerpo: string): Promise<string> {
+  const s = await getSettings();
+  return `
+    <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;color:#1f2430">
+      <div style="background:#14275c;padding:18px 20px;border-radius:10px 10px 0 0">
+        <span style="color:#3fbfa0;font-weight:800;font-size:19px">Librería</span>
+        <span style="color:#ff6fb5;font-weight:800;font-size:19px">F</span><span style="color:#29b6e8;font-weight:800;font-size:19px">u</span><span style="color:#f5b301;font-weight:800;font-size:19px">s</span><span style="color:#3fbfa0;font-weight:800;font-size:19px">i</span><span style="color:#ff6fb5;font-weight:800;font-size:19px">ó</span><span style="color:#29b6e8;font-weight:800;font-size:19px">n</span>
+      </div>
+      <div style="border:1px solid #e7e2e6;border-top:0;border-radius:0 0 10px 10px;padding:22px 20px">
+        <h2 style="margin:0 0 14px;font-size:19px;color:#c2185b">${titulo}</h2>
+        ${cuerpo}
+        <hr style="border:0;border-top:1px solid #e7e2e6;margin:22px 0 14px">
+        <p style="margin:0;font-size:13px;color:#5b6472;line-height:1.6">
+          ${s["store.address"]}<br>
+          ${s["store.hours"]}<br>
+          WhatsApp ${s["store.phone"]}
+        </p>
+      </div>
+    </div>`;
+}
+
+/** El pago se acreditó. Es lo primero que recibe después de comprar. */
+export async function notifyCustomerOrderPaid(order: OrderForEmail): Promise<void> {
+  if (!order.customerEmail) return;
+
+  const queSigue =
+    order.deliveryMethod === "ENVIO_DOMICILIO"
+      ? `<p style="margin:0 0 14px">Nos comunicamos con vos para coordinar el envío a <strong>${order.shippingAddress}, ${order.shippingCity}</strong>.</p>`
+      : `<p style="margin:0 0 14px">Lo estamos preparando. <strong>Te vamos a avisar por este mismo medio cuando esté listo</strong> para que pases a retirarlo; no hace falta que vengas antes.</p>`;
+
+  const html = await marco(
+    `¡Gracias por tu compra, ${order.customerName.split(" ")[0]}!`,
+    `<p style="margin:0 0 14px">Recibimos tu pago del pedido <strong>#${order.number}</strong>.</p>
+     ${queSigue}
+     <table style="border-collapse:collapse;width:100%;font-size:14px;margin-top:6px">${filasDeItems(order)}
+       <tr><td style="padding:8px;font-weight:bold">Total</td>
+       <td style="padding:8px;text-align:right;font-weight:bold">${formatPrice(order.totalCents)}</td></tr>
+     </table>`,
+  );
+
+  await send(order.customerEmail, `Recibimos tu pedido #${order.number} — Librería Fusión`, html);
+}
+
+/** El pedido está armado. Para una tienda de retiro, este es EL mail. */
+export async function notifyCustomerOrderReady(order: OrderForEmail): Promise<void> {
+  if (!order.customerEmail) return;
+  const s = await getSettings();
+
+  const cuerpo =
+    order.deliveryMethod === "ENVIO_DOMICILIO"
+      ? `<p style="margin:0 0 14px">Tu pedido <strong>#${order.number}</strong> ya está armado. Nos comunicamos con vos para coordinar la entrega.</p>`
+      : `<p style="margin:0 0 14px">Tu pedido <strong>#${order.number}</strong> ya está armado y te espera en el local.</p>
+         <div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+           <p style="margin:0;font-weight:bold;color:${VERDE}">Pasá a retirarlo por</p>
+           <p style="margin:4px 0 0">${s["store.address"]}</p>
+           <p style="margin:4px 0 0;font-size:13px;color:#5b6472">${s["store.hours"]}</p>
+         </div>
+         <p style="margin:0 0 14px;font-size:13px;color:#5b6472">${s["pickup.detail"]}</p>`;
+
+  const html = await marco(
+    "¡Tu pedido está listo!",
+    cuerpo +
+      `<table style="border-collapse:collapse;width:100%;font-size:14px">${filasDeItems(order)}</table>`,
+  );
+
+  await send(order.customerEmail, `Tu pedido #${order.number} está listo para retirar`, html);
+}
+
+/**
+ * El pedido se canceló. Qué dice depende de si había plata de por medio y de
+ * cómo se pagó: con Mercado Pago la devolución es automática, en el local hay
+ * que ir a buscarla, y si nunca se pagó no hay nada que devolver. Decirle a
+ * alguien "te devolvimos la plata" cuando no es cierto es peor que no escribir.
+ */
+export async function notifyCustomerOrderCancelled(
+  order: OrderForEmail,
+  motivo: "reembolsado" | "devolucion-en-local" | "sin-pago",
+): Promise<void> {
+  if (!order.customerEmail) return;
+  const s = await getSettings();
+
+  const plata = {
+    reembolsado: `<div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+        <p style="margin:0;font-weight:bold;color:${VERDE}">Te devolvimos ${formatPrice(order.totalCents)}</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#5b6472">La devolución sale por Mercado Pago, con el mismo medio con el que pagaste. Según tu banco o tarjeta puede tardar algunos días hábiles en aparecer.</p>
+      </div>`,
+    "devolucion-en-local": `<div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+        <p style="margin:0;font-weight:bold;color:${VERDE}">Pasá a buscar tu devolución</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#5b6472">Como el pago fue en el local, la devolución de ${formatPrice(order.totalCents)} también es ahí: acercate por ${s["store.address"]} en nuestro horario de atención.</p>
+      </div>`,
+    "sin-pago": `<p style="margin:0 0 14px">No se te cobró nada.</p>`,
+  }[motivo];
+
+  const html = await marco(
+    `Se canceló tu pedido #${order.number}`,
+    `<p style="margin:0 0 14px">Hola ${order.customerName.split(" ")[0]}, tu pedido quedó cancelado.</p>
+     ${plata}
+     <p style="margin:0;font-size:13px;color:#5b6472">Si tenés alguna duda respondé este mail o escribinos al WhatsApp ${s["store.phone"]}.</p>`,
+  );
+
+  await send(order.customerEmail, `Se canceló tu pedido #${order.number}`, html);
+}

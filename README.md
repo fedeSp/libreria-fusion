@@ -319,6 +319,34 @@ usuario (la casilla de la tienda) ya vienen por defecto. Para activar los mails
 alcanza con agregar **solo `SMTP_PASS`** (contraseña de aplicación de Gmail) al
 `.env` del server y recrear el contenedor. Sin ella, no se manda nada y nada falla.
 
+## Mails
+
+| Mail | A quién | Cuándo |
+|---|---|---|
+| Nueva venta | al local | Mercado Pago confirma el pago |
+| Recibimos tu pedido | al cliente | idem |
+| **Listo para retirar** | al cliente | el panel pasa el pedido a ese estado |
+| Se canceló tu pedido | al cliente | al cancelar, con tres variantes |
+
+El de "listo para retirar" es el que sostiene una tienda de retiro: reemplaza
+que alguien tenga que acordarse de escribirle por WhatsApp a cada cliente.
+
+El de cancelación **dice cosas distintas según dónde está la plata**, porque
+decirle a alguien "te devolvimos" cuando no es cierto es peor que no escribirle:
+
+- pagó con Mercado Pago → se reembolsa solo y el mail avisa que puede tardar
+  unos días hábiles según el banco;
+- pagó en el local → el sistema no devuelve nada, y el mail lo invita a pasar
+  por el local a buscar la devolución;
+- nunca pagó → el mail dice que no se le cobró nada.
+
+Un mail que falla nunca tumba la operación: el cambio de estado ya ocurrió y es
+lo que importa. Queda en el log del contenedor para poder avisar a mano.
+
+Para verlos sin hacer una compra, `scripts/test-mail.ts` manda los seis sobre un
+pedido real de la base, reemplazando el destinatario (a un cliente de verdad no
+se le escribe para probar una plantilla).
+
 ## Reembolsos
 
 Cancelar un pedido en estado pagado (`PAGADO`/`EN_PREPARACION`/`LISTO_PARA_RETIRAR`)

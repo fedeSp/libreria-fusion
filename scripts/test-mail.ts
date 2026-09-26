@@ -76,10 +76,32 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`mandando el aviso del pedido #${pedido.number} a ${destino}…`);
-  const { notifyAdminNewOrder } = await import("../src/lib/email");
-  await notifyAdminNewOrder(pedido);
-  console.log("enviado.");
+  // Se manda TODO el juego: el aviso que recibe el local y los tres que recibe
+  // el cliente, incluidas las tres variantes de cancelación. La idea es poder
+  // mirarlos todos juntos antes de que los vea alguien que compró de verdad.
+  const mails = await import("../src/lib/email");
+
+  // El pedido sale de la base, pero el destinatario se reemplaza por el de la
+  // prueba: no se le escribe a un cliente real para probar una plantilla.
+  const comoCliente = { ...pedido, customerEmail: destino };
+
+  const envios: [string, () => Promise<void>][] = [
+    ["1/6  al local: nueva venta", () => mails.notifyAdminNewOrder(pedido)],
+    ["2/6  al cliente: recibimos tu pedido", () => mails.notifyCustomerOrderPaid(comoCliente)],
+    ["3/6  al cliente: listo para retirar", () => mails.notifyCustomerOrderReady(comoCliente)],
+    ["4/6  al cliente: cancelado y reembolsado por MP", () => mails.notifyCustomerOrderCancelled(comoCliente, "reembolsado")],
+    ["5/6  al cliente: cancelado, devolución en el local", () => mails.notifyCustomerOrderCancelled(comoCliente, "devolucion-en-local")],
+    ["6/6  al cliente: cancelado sin haber pagado", () => mails.notifyCustomerOrderCancelled(comoCliente, "sin-pago")],
+  ];
+
+  console.log(`mandando ${envios.length} mails sobre el pedido #${pedido.number} a ${destino}`);
+  console.log("");
+  for (const [nombre, enviar] of envios) {
+    await enviar();
+    console.log(`  ${nombre}`);
+  }
+  console.log("");
+  console.log("listo.");
 }
 
 main()
