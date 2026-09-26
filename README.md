@@ -310,6 +310,10 @@ convierte `/reels/` en `/reel/` y quita duplicados.
 
 ## Mails (switch por contraseña)
 
+`npm run test:mail` no existe porque hace falta el `.env` del server; el comando
+completo está en la cabecera de `scripts/test-mail.ts`. Ese script verifica las
+credenciales contra Gmail **antes** de mandar, que es donde falla casi siempre.
+
 El envío está gateado por `SMTP_PASS`: el host (`smtp.gmail.com`), puerto (587) y
 usuario (la casilla de la tienda) ya vienen por defecto. Para activar los mails
 alcanza con agregar **solo `SMTP_PASS`** (contraseña de aplicación de Gmail) al
