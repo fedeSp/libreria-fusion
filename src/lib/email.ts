@@ -185,34 +185,32 @@ export async function notifyCustomerOrderReady(order: OrderForEmail): Promise<vo
 }
 
 /**
- * El pedido se canceló. Qué dice depende de si había plata de por medio y de
- * cómo se pagó: con Mercado Pago la devolución es automática, en el local hay
- * que ir a buscarla, y si nunca se pagó no hay nada que devolver. Decirle a
- * alguien "te devolvimos la plata" cuando no es cierto es peor que no escribir.
+ * El pedido se canceló.
+ *
+ * Solo hay dos casos, y la diferencia es si hay plata para devolver. Con
+ * Mercado Pago el cobro ya ocurrió y el reembolso sale solo, así que hay que
+ * contarlo. En cualquier otro caso —efectivo, o un pedido que nunca se pagó—
+ * el cliente todavía no puso un peso: ahí el aviso es que se canceló y nada
+ * más. Explicar de menos es mejor que explicar de más.
  */
 export async function notifyCustomerOrderCancelled(
   order: OrderForEmail,
-  motivo: "reembolsado" | "devolucion-en-local" | "sin-pago",
+  reembolsado: boolean,
 ): Promise<void> {
   if (!order.customerEmail) return;
   const s = await getSettings();
 
-  const plata = {
-    reembolsado: `<div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+  const devolucion = reembolsado
+    ? `<div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
         <p style="margin:0;font-weight:bold;color:${VERDE}">Te devolvimos ${formatPrice(order.totalCents)}</p>
         <p style="margin:4px 0 0;font-size:13px;color:#5b6472">La devolución sale por Mercado Pago, con el mismo medio con el que pagaste. Según tu banco o tarjeta puede tardar algunos días hábiles en aparecer.</p>
-      </div>`,
-    "devolucion-en-local": `<div style="background:#fde7f0;border-radius:8px;padding:14px 16px;margin:0 0 14px">
-        <p style="margin:0;font-weight:bold;color:${VERDE}">Pasá a buscar tu devolución</p>
-        <p style="margin:4px 0 0;font-size:13px;color:#5b6472">Como el pago fue en el local, la devolución de ${formatPrice(order.totalCents)} también es ahí: acercate por ${s["store.address"]} en nuestro horario de atención.</p>
-      </div>`,
-    "sin-pago": `<p style="margin:0 0 14px">No se te cobró nada.</p>`,
-  }[motivo];
+      </div>`
+    : "";
 
   const html = await marco(
     `Se canceló tu pedido #${order.number}`,
     `<p style="margin:0 0 14px">Hola ${order.customerName.split(" ")[0]}, tu pedido quedó cancelado.</p>
-     ${plata}
+     ${devolucion}
      <p style="margin:0;font-size:13px;color:#5b6472">Si tenés alguna duda respondé este mail o escribinos al WhatsApp ${s["store.phone"]}.</p>`,
   );
 

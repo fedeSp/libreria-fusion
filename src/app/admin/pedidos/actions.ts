@@ -5,21 +5,8 @@ import type { OrderStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { refundPayment } from "@/lib/mercadopago";
+import { ESTADOS_PAGADOS, TRANSICIONES } from "@/lib/orders";
 import { notifyCustomerOrderCancelled, notifyCustomerOrderReady } from "@/lib/email";
-
-// Transiciones válidas del pedido desde el panel. No cualquier salto: solo los
-// pasos que tienen sentido operativo, para no dejar un pedido en un estado raro.
-const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
-  PENDIENTE_PAGO: ["PAGADO", "CANCELADO"],
-  PAGADO: ["EN_PREPARACION", "LISTO_PARA_RETIRAR", "CANCELADO"],
-  EN_PREPARACION: ["LISTO_PARA_RETIRAR", "CANCELADO"],
-  LISTO_PARA_RETIRAR: ["ENTREGADO", "CANCELADO"],
-  ENTREGADO: [],
-  CANCELADO: [],
-};
-
-// Estados en los que el pedido ya cobró: cancelarlos implica devolver la plata.
-const PAID_STATES: OrderStatus[] = ["PAGADO", "EN_PREPARACION", "LISTO_PARA_RETIRAR"];
 
 type OrderConTodo = Awaited<ReturnType<typeof buscarPedido>>;
 
@@ -72,19 +59,19 @@ export async function updateOrderStatus(orderId: string, next: OrderStatus) {
   const order = await buscarPedido(orderId);
   if (!order) return { ok: false, error: "Pedido no encontrado" };
 
-  if (!ALLOWED[order.status].includes(next)) {
+  if (!TRANSICIONES[order.status].includes(next)) {
     return { ok: false, error: `No se puede pasar de ${order.status} a ${next}` };
   }
 
   // ------------------------------------------------------------ cancelación
   if (next === "CANCELADO") {
-    const yaPago = PAID_STATES.includes(order.status);
+    const yaPago = ESTADOS_PAGADOS.includes(order.status);
 
     // Si nunca se pagó no hay nada que devolver, y decirle al cliente que le
     // reembolsamos algo sería mentirle.
     if (!yaPago) {
       await db.order.update({ where: { id: orderId }, data: { status: "CANCELADO" } });
-      await avisar("cancelación", () => notifyCustomerOrderCancelled(order, "sin-pago"));
+      await avisar("cancelación", () => notifyCustomerOrderCancelled(order, false));
       revalidar(order.number);
       return { ok: true };
     }
@@ -116,18 +103,18 @@ export async function updateOrderStatus(orderId: string, next: OrderStatus) {
 
       await cancelarYReponer(order, aprobado.id);
       await avisar("cancelación con reembolso", () =>
-        notifyCustomerOrderCancelled(order, "reembolsado"),
+        notifyCustomerOrderCancelled(order, true),
       );
       revalidar(order.number);
       return { ok: true, refunded: true };
     }
 
-    // Pago en el local: no hay nada que devolver por sistema.
+    // Pago en el local: el cliente paga cuando retira, así que un pedido
+    // cancelado nunca llegó a cobrarse. No hay nada que devolver ni que
+    // avisarle más allá de que se canceló.
     const enLocal = order.payments.find((p) => p.status === "APROBADO");
     await cancelarYReponer(order, enLocal?.id);
-    await avisar("cancelación con devolución en el local", () =>
-      notifyCustomerOrderCancelled(order, "devolucion-en-local"),
-    );
+    await avisar("cancelación", () => notifyCustomerOrderCancelled(order, false));
     revalidar(order.number);
     return { ok: true, devolucionEnLocal: true };
   }

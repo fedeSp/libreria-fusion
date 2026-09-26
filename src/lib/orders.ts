@@ -1,6 +1,27 @@
 import "server-only";
-import type { PaymentStatus } from "@prisma/client";
+import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { db } from "./db";
+
+// A qué estados puede pasar un pedido desde cada estado.
+//
+// VIVE EN UN SOLO LUGAR a propósito: estaba escrita dos veces, en la acción del
+// servidor y en la pantalla que dibuja los botones, con un comentario que pedía
+// mantenerlas iguales. Eso funciona hasta que alguien toca una sola.
+//
+// ENTREGADO y CANCELADO no tienen salida: un pedido terminado no se vuelve a
+// mover. Es lo que evita que se reabra algo ya entregado y el stock o la plata
+// queden contando dos veces.
+export const TRANSICIONES: Record<OrderStatus, OrderStatus[]> = {
+  PENDIENTE_PAGO: ["PAGADO", "CANCELADO"],
+  PAGADO: ["EN_PREPARACION", "LISTO_PARA_RETIRAR", "CANCELADO"],
+  EN_PREPARACION: ["LISTO_PARA_RETIRAR", "CANCELADO"],
+  LISTO_PARA_RETIRAR: ["ENTREGADO", "CANCELADO"],
+  ENTREGADO: [],
+  CANCELADO: [],
+};
+
+// Estados en los que el pedido ya cobró.
+export const ESTADOS_PAGADOS: OrderStatus[] = ["PAGADO", "EN_PREPARACION", "LISTO_PARA_RETIRAR"];
 
 // Vencimiento de pedidos sin pagar. No hay cron en esta app — todo se
 // renderiza por request — así que en vez de un worker en segundo plano, cada

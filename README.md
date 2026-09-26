@@ -308,6 +308,17 @@ que hace falta. Se usa el widget oficial de embebido, igual que en ART Muebles.
 posteo (el perfil, texto suelto), saca los parámetros de seguimiento (`?igsh=...`),
 convierte `/reels/` en `/reel/` y quita duplicados.
 
+## Estados del pedido
+
+`TRANSICIONES` en `src/lib/orders.ts` es la única tabla que dice a qué estado
+puede pasar un pedido desde cada estado: la usan la acción del servidor y la
+pantalla que dibuja los botones. Estaba escrita dos veces, con un comentario
+que pedía mantenerlas iguales — eso funciona hasta que alguien toca una sola.
+
+**ENTREGADO y CANCELADO no tienen salida.** Un pedido terminado no se vuelve a
+mover, que es lo que evita reabrir algo ya entregado y que el stock o la plata
+terminen contando dos veces.
+
 ## Mails (switch por contraseña)
 
 `npm run test:mail` no existe porque hace falta el `.env` del server; el comando
@@ -331,14 +342,17 @@ alcanza con agregar **solo `SMTP_PASS`** (contraseña de aplicación de Gmail) a
 El de "listo para retirar" es el que sostiene una tienda de retiro: reemplaza
 que alguien tenga que acordarse de escribirle por WhatsApp a cada cliente.
 
-El de cancelación **dice cosas distintas según dónde está la plata**, porque
-decirle a alguien "te devolvimos" cuando no es cierto es peor que no escribirle:
+El de cancelación tiene **dos variantes**, y la diferencia es si hay plata para
+devolver:
 
 - pagó con Mercado Pago → se reembolsa solo y el mail avisa que puede tardar
   unos días hábiles según el banco;
-- pagó en el local → el sistema no devuelve nada, y el mail lo invita a pasar
-  por el local a buscar la devolución;
-- nunca pagó → el mail dice que no se le cobró nada.
+- cualquier otro caso —efectivo, o un pedido que nunca se pagó— → el cliente
+  todavía no puso un peso, así que el mail dice que se canceló y nada más.
+
+Lo segundo vale la pena subrayarlo: **el pago en efectivo se cobra al retirar**,
+así que un pedido cancelado nunca llegó a cobrarse. Mandarle a esa persona un
+mail invitándola a pasar a buscar una devolución sería confundirla.
 
 Un mail que falla nunca tumba la operación: el cambio de estado ya ocurrió y es
 lo que importa. Queda en el log del contenedor para poder avisar a mano.

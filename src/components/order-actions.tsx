@@ -11,12 +11,14 @@ import { updateOrderStatus } from "@/app/admin/pedidos/actions";
 export function OrderActions({
   orderId,
   next,
-  isPaid,
+  reembolsable,
 }: {
   orderId: string;
   next: OrderStatus[];
-  // Pedido ya cobrado: cancelar dispara reembolso, así que se avisa y confirma.
-  isPaid: boolean;
+  // Cobrado por Mercado Pago: cancelar dispara un reembolso de verdad, así que
+  // se avisa antes. Un pedido de pago en el local no entra acá: todavía no se
+  // cobró nada.
+  reembolsable: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -27,7 +29,7 @@ export function OrderActions({
   }
 
   function run(status: OrderStatus) {
-    if (status === "CANCELADO" && isPaid) {
+    if (status === "CANCELADO" && reembolsable) {
       const ok = window.confirm(
         "Este pedido ya está pagado. Cancelarlo va a REEMBOLSAR el pago al cliente por Mercado Pago y reponer el stock. ¿Confirmás?",
       );
@@ -47,7 +49,7 @@ export function OrderActions({
         {next.map((s) => {
           const danger = s === "CANCELADO";
           const label = danger
-            ? isPaid
+            ? reembolsable
               ? "Cancelar y reembolsar"
               : "Cancelar pedido"
             : `Marcar: ${STATUS_LABEL[s]}`;

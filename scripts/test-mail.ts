@@ -86,12 +86,11 @@ async function main() {
   const comoCliente = { ...pedido, customerEmail: destino };
 
   const envios: [string, () => Promise<void>][] = [
-    ["1/6  al local: nueva venta", () => mails.notifyAdminNewOrder(pedido)],
-    ["2/6  al cliente: recibimos tu pedido", () => mails.notifyCustomerOrderPaid(comoCliente)],
-    ["3/6  al cliente: listo para retirar", () => mails.notifyCustomerOrderReady(comoCliente)],
-    ["4/6  al cliente: cancelado y reembolsado por MP", () => mails.notifyCustomerOrderCancelled(comoCliente, "reembolsado")],
-    ["5/6  al cliente: cancelado, devolución en el local", () => mails.notifyCustomerOrderCancelled(comoCliente, "devolucion-en-local")],
-    ["6/6  al cliente: cancelado sin haber pagado", () => mails.notifyCustomerOrderCancelled(comoCliente, "sin-pago")],
+    ["1/5  al local: nueva venta", () => mails.notifyAdminNewOrder(pedido)],
+    ["2/5  al cliente: recibimos tu pedido", () => mails.notifyCustomerOrderPaid(comoCliente)],
+    ["3/5  al cliente: listo para retirar", () => mails.notifyCustomerOrderReady(comoCliente)],
+    ["4/5  al cliente: cancelado y reembolsado por MP", () => mails.notifyCustomerOrderCancelled(comoCliente, true)],
+    ["5/5  al cliente: cancelado sin plata de por medio", () => mails.notifyCustomerOrderCancelled(comoCliente, false)],
   ];
 
   console.log(`mandando ${envios.length} mails sobre el pedido #${pedido.number} a ${destino}`);

@@ -1,28 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { OrderStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDateTimeAR } from "@/lib/dates";
 import { formatPrice } from "@/lib/money";
 import { whatsappUrl, getSettings } from "@/lib/settings";
-import { expireStaleOrders } from "@/lib/orders";
+import { ESTADOS_PAGADOS, TRANSICIONES, expireStaleOrders } from "@/lib/orders";
 import { AdminShell } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/order-status";
 import { OrderActions } from "@/components/order-actions";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pedido", robots: { index: false } };
-
-// Debe coincidir con las transiciones permitidas del server (actions.ts).
-const NEXT: Record<OrderStatus, OrderStatus[]> = {
-  PENDIENTE_PAGO: ["PAGADO", "CANCELADO"],
-  PAGADO: ["EN_PREPARACION", "LISTO_PARA_RETIRAR", "CANCELADO"],
-  EN_PREPARACION: ["LISTO_PARA_RETIRAR", "CANCELADO"],
-  LISTO_PARA_RETIRAR: ["ENTREGADO", "CANCELADO"],
-  ENTREGADO: [],
-  CANCELADO: [],
-};
 
 export default async function PedidoDetalle({
   params,
@@ -72,10 +61,14 @@ export default async function PedidoDetalle({
             <div className="mt-3">
               <OrderActions
                 orderId={order.id}
-                next={NEXT[order.status]}
-                isPaid={["PAGADO", "EN_PREPARACION", "LISTO_PARA_RETIRAR"].includes(
-                  order.status,
-                )}
+                next={TRANSICIONES[order.status]}
+                // Solo hay reembolso automático si la plata entró por Mercado
+                // Pago. Con pago en el local no se cobró nada todavía, así que
+                // el cartel de confirmación no debe prometer una devolución.
+                reembolsable={
+                  ESTADOS_PAGADOS.includes(order.status) &&
+                  (order.paymentMethod?.isOnline ?? false)
+                }
               />
             </div>
           </section>
