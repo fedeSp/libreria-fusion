@@ -1,7 +1,13 @@
 // Prueba el envío de mails sin tener que hacer una compra de verdad.
 //
+//   cd /opt/libreria-fusion && set -a && . ./.env && set +a
 //   docker compose -f docker-compose.prod.yml run --rm --no-deps \
-//     -e SMTP_PASS="..." migrate npx tsx scripts/test-mail.ts vos@mail.com 7
+//     -e SMTP_PASS="$SMTP_PASS" migrate \
+//     node --import tsx --conditions=react-server \
+//     scripts/test-mail.ts vos@mail.com 7
+//
+// Va con --conditions=react-server porque lib/email importa "server-only", que
+// fuera de Next no se resuelve sin esa condición.
 //
 // Primero verifica que el servidor de correo acepte las credenciales —que es
 // donde falla el 90% de las veces— y recién después manda. Usa el mismo aviso
