@@ -102,6 +102,8 @@ Hecho:
 
 - [x] Vencimiento de pedidos sin pagar (`expireStaleOrders`, se corre al listar/mostrar pedidos)
 - [x] DNS del dominio apuntando al VPS, en nube naranja (verificado el 03/10/2026)
+- [x] Monitor de uptime: GitHub Actions consulta `/api/health` cada 10 minutos
+      (`.github/workflows/uptime.yml`, prendido con la variable `MONITOR_ENABLED`)
 
 Pendiente para salir a producción.
 
@@ -129,9 +131,6 @@ Recomendables:
 - [ ] Revisar *Devoluciones* (plazo, productos abiertos) y *Quiénes somos*
 - [ ] Pedirle a la dueña o al contador el link de Data Fiscal (ARCA) y cargarlo en Ajustes
 - [ ] Verificar qué pasa si MP confirma un pago de un pedido que ya venció
-- [ ] Monitor de uptime: ya está armado (`.github/workflows/uptime.yml` + `/api/health`);
-      falta deployar, cargar el secret `MONITOR_BASIC_AUTH` mientras siga el basic auth
-      y prenderlo con la variable `MONITOR_ENABLED=true`
 
 ## Subida de fotos
 

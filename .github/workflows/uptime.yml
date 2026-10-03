@@ -7,9 +7,9 @@
 # (si tiene activadas las notificaciones de Actions). El chequeo pega en
 # /api/health, que también confirma que la base responde.
 #
-# Mientras la tienda siga detrás del basic auth de nginx, hace falta el secret
-# MONITOR_BASIC_AUTH con "usuario:contraseña" (Settings → Secrets → Actions).
-# Al abrir la tienda se puede borrar.
+# /api/health tiene su propio location en nginx con auth_basic off (como el
+# webhook de MP), así que no necesita credenciales. El secret opcional
+# MONITOR_BASIC_AUTH ("usuario:contraseña") queda por si eso cambia.
 #
 # Arranca APAGADO: solo chequea si la variable del repo MONITOR_ENABLED vale
 # "true" (Settings → Secrets and variables → Actions → Variables). Así no
