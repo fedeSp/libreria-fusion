@@ -1,0 +1,48 @@
+# Monitor de uptime de la tienda.
+#
+# Corre en GitHub y no en el VPS a propósito: un monitor que vive en el mismo
+# server no avisa justo cuando el server se cae.
+#
+# Cuando falla, GitHub manda un mail a quien editó este archivo por última vez
+# (si tiene activadas las notificaciones de Actions). El chequeo pega en
+# /api/health, que también confirma que la base responde.
+#
+# Mientras la tienda siga detrás del basic auth de nginx, hace falta el secret
+# MONITOR_BASIC_AUTH con "usuario:contraseña" (Settings → Secrets → Actions).
+# Al abrir la tienda se puede borrar.
+#
+# Ojo: GitHub desactiva los workflows programados de un repo público después
+# de 60 días sin commits. Si eso pasa, avisa por mail y se reactiva a mano.
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Chequear https://libreriafusion.com.ar/api/health
+        env:
+          BASIC_AUTH: ${{ secrets.MONITOR_BASIC_AUTH }}
+        run: |
+          auth=()
+          if [ -n "$BASIC_AUTH" ]; then auth=(-u "$BASIC_AUTH"); fi
+          # Tres intentos separados 20 s: un reinicio del contenedor durante
+          # un deploy no tiene que disparar una alarma.
+          for intento in 1 2 3; do
+            code=$(curl -s -o body.txt -w "%{http_code}" --max-time 20 "${auth[@]}" \
+              https://libreriafusion.com.ar/api/health || echo 000)
+            if [ "$code" = "200" ] && grep -q '"ok":true' body.txt; then
+              echo "OK (intento $intento)"
+              exit 0
+            fi
+            echo "Intento $intento: HTTP $code $(head -c 200 body.txt 2>/dev/null)"
+            sleep 20
+          done
+          echo "::error::La tienda no responde bien: HTTP $code"
+          exit 1

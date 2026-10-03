@@ -129,7 +129,8 @@ Recomendables:
 - [ ] Revisar *Devoluciones* (plazo, productos abiertos) y *Quiénes somos*
 - [ ] Pedirle a la dueña o al contador el link de Data Fiscal (ARCA) y cargarlo en Ajustes
 - [ ] Verificar qué pasa si MP confirma un pago de un pedido que ya venció
-- [ ] Monitor de uptime
+- [ ] Monitor de uptime: ya está armado (`.github/workflows/uptime.yml` + `/api/health`);
+      falta deployar y cargar el secret `MONITOR_BASIC_AUTH` mientras siga el basic auth
 
 ## Subida de fotos
 
