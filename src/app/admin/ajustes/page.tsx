@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { AdminShell } from "@/components/admin-shell";
 import { InstagramPostsField } from "@/components/instagram-posts-field";
+import { parseDataFiscalUrl } from "@/lib/data-fiscal";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ajustes", robots: { index: false } };
@@ -18,6 +19,8 @@ const FIELDS: {
   hint?: string;
   // Campos con editor propio en vez de un input suelto.
   kind?: "instagram";
+  // Limpia lo que se pegó antes de guardarlo.
+  normalize?: (value: string) => string;
 }[] = [
   { key: "store.name", label: "Nombre de la tienda" },
   { key: "store.address", label: "Dirección del local" },
@@ -31,6 +34,15 @@ const FIELDS: {
     hint: "Para que Google entienda dónde queda el local. No se muestra en la tienda.",
   },
   { key: "store.codigoPostal", label: "Código postal" },
+  {
+    key: "store.dataFiscal",
+    label: "Data Fiscal (QR de ARCA)",
+    area: true,
+    rows: 3,
+    hint:
+      "Pegá el link o el código entero que da ARCA en el formulario 960/NM. El QR aparece al pie de la tienda. Si lo pegado no es un link de ARCA, el campo queda vacío al guardar.",
+    normalize: parseDataFiscalUrl,
+  },
   { key: "pickup.notice", label: "Aviso de retiro (título)", area: true },
   { key: "pickup.detail", label: "Aviso de retiro (detalle)", area: true },
   { key: "instagram.url", label: "URL de Instagram" },
@@ -49,7 +61,8 @@ async function saveSettings(formData: FormData) {
   "use server";
   await requireAdmin();
   for (const f of FIELDS) {
-    const value = String(formData.get(f.key) ?? "").trim();
+    const raw = String(formData.get(f.key) ?? "").trim();
+    const value = f.normalize ? f.normalize(raw) : raw;
     await db.storeSetting.upsert({
       where: { key: f.key },
       update: { value },

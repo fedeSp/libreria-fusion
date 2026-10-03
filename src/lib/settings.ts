@@ -11,6 +11,8 @@ const DEFAULTS: Record<string, string> = {
   "store.address": "Santos Vega 7196, Villa Bosch — Tres de Febrero",
   "store.hours": "Lunes a viernes de 9 a 13 y de 16 a 19:30 · Sábados de 9 a 13",
   "store.cuit": "27240307583",
+  // Link del QR de Data Fiscal de ARCA. Vacio = el footer no muestra el QR.
+  "store.dataFiscal": "",
   // Usados por los datos estructurados que lee Google. No se muestran en
   // la tienda: la dirección visible sigue siendo store.address.
   "store.provincia": "Buenos Aires",
