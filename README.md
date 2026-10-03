@@ -104,6 +104,7 @@ Hecho:
 - [x] DNS del dominio apuntando al VPS, en nube naranja (verificado el 03/10/2026)
 - [x] Pagos tardíos: el link de MP vence con el pedido (45 min), sin Rapipago/Pago Fácil,
       y si igual entra un pago de un pedido cancelado se devuelve solo y avisa al local
+- [x] Backups de la base y de las fotos copiados a Cloudflare R2 todas las noches
 - [x] Monitor de uptime: GitHub Actions consulta `/api/health` cada 10 minutos
       (`.github/workflows/uptime.yml`, prendido con la variable `MONITOR_ENABLED`)
 
@@ -124,7 +125,6 @@ Apertura:
 
 Recomendables:
 
-- [ ] Copiar los backups fuera del VPS (R2, S3 u otra máquina)
 - [ ] Revisar con la dueña los datos del local en Ajustes (teléfono, horarios, email,
       redes) y que el aviso de retiro no diga "solo retiro"
 - [ ] Confirmar medios de pago activos y si las "3 cuotas sin interés" son reales
@@ -240,10 +240,24 @@ Restaurar (pisa la base actual):
 gunzip -c /opt/libreria-fusion/backups/diarios/fusion-AAAA-MM-DD.sql.gz   | docker exec -i fusion-prod-db psql -U fusion -d fusion
 ```
 
-> **Lo que esto NO cubre:** los backups viven en el mismo disco que la base.
-> Protegen contra "se borró una tabla" o "una importación salió mal", no contra
-> que se muera el VPS. Copiarlos afuera (R2, S3, otra máquina) es el paso que
-> falta.
+### Copia afuera: Cloudflare R2
+
+Al terminar, el mismo script copia todo al bucket `libreria-fusion-backups` de
+Cloudflare R2 (credenciales `R2_*` en el `.env` del server), así que un VPS
+muerto no se lleva nada:
+
+- `db/` — los dumps. Se copian y nunca se borran por la rotación local: allá
+  se guardan todos durante 400 días (pesan ~25 KB cada uno).
+- `fotos/` — las fotos subidas desde el panel, que antes no tenían ningún
+  backup. Lo que se borra en la tienda pasa a `fotos-borradas/<fecha>`.
+
+rclone corre en un contenedor (`rclone/rclone`), no hay nada instalado en el
+server. Si R2 falla queda un `ERROR` en `backups/backup.log`, pero el backup
+local ya está hecho.
+
+> El cron ejecuta `/opt/libreria-fusion/backup-db.sh`, no el de `scripts/`.
+> Si se cambia el script, después del deploy hay que copiarlo:
+> `install -m 700 scripts/backup-db.sh backup-db.sh`.
 
 ## Exportar e importar
 
