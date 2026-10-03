@@ -33,7 +33,7 @@ export default async function AdminHome() {
 
   const cards = [
     { label: "A preparar", value: aPreparar, href: "/admin/pedidos?estado=PAGADO" },
-    { label: "Listos para retirar", value: listos, href: "/admin/pedidos?estado=LISTO_PARA_RETIRAR" },
+    { label: "Listos", value: listos, href: "/admin/pedidos?estado=LISTO_PARA_RETIRAR" },
     { label: "Esperando pago", value: pendientes, href: "/admin/pedidos?estado=PENDIENTE_PAGO" },
     { label: "Productos activos", value: productos, href: "/admin/productos" },
   ];

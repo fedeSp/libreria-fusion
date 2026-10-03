@@ -4,7 +4,9 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDIENTE_PAGO: "Esperando pago",
   PAGADO: "Pagado",
   EN_PREPARACION: "En preparación",
-  LISTO_PARA_RETIRAR: "Listo para retirar",
+  // El enum quedó con el nombre del retiro, pero un pedido con envío pasa por
+  // el mismo estado: la etiqueta sirve para los dos.
+  LISTO_PARA_RETIRAR: "Listo",
   ENTREGADO: "Entregado",
   CANCELADO: "Cancelado",
 };

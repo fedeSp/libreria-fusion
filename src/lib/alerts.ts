@@ -79,8 +79,8 @@ export async function getAlerts(): Promise<Alert[]> {
     alerts.push({
       id: "listos",
       level: "info",
-      title: `${listos} ${listos === 1 ? "pedido listo para retirar" : "pedidos listos para retirar"}`,
-      detail: "Esperando que el cliente pase a buscarlo.",
+      title: `${listos} ${listos === 1 ? "pedido listo" : "pedidos listos"}`,
+      detail: "Esperando que el cliente lo retire o coordinar el envío.",
       href: "/admin/pedidos?estado=LISTO_PARA_RETIRAR",
       count: listos,
     });
