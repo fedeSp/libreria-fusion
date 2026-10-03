@@ -11,9 +11,14 @@
 #   gunzip -c /opt/libreria-fusion/backups/diarios/fusion-AAAA-MM-DD.sql.gz \
 #     | docker exec -i fusion-prod-db psql -U fusion -d fusion
 #
-# LIMITACION QUE CONVIENE TENER PRESENTE: esto vive en el mismo disco que la
-# base. Protege contra "se borro una tabla" o "una importacion salio mal", NO
-# contra que se muera el VPS. Para eso hay que copiarlos afuera.
+# COPIA AFUERA: al final, los dumps y las fotos subidas se copian a Cloudflare
+# R2 (bucket R2_BUCKET, credenciales R2_* en el .env). Asi un VPS muerto no se
+# lleva todo. Si R2 falla queda anotado en el log, pero el backup local ya
+# esta hecho y no se toca.
+#
+# RESTAURAR DESDE R2 (en un server nuevo, con las mismas variables R2_*):
+#   docker run --rm -v "$PWD:/data" <mismas RCLONE_CONFIG_R2_* que abajo> #     rclone/rclone copy r2:$R2_BUCKET/db /data/backups
+#   y las fotos: ... copy r2:$R2_BUCKET/fotos <volumen de uploads>
 
 set -eu
 
@@ -88,4 +93,31 @@ SOBRAN=$(find "$MENSUALES" -name '*.sql.gz' | sort | head -n "-$MAX_MENSUALES" |
 if [ -n "$SOBRAN" ]; then
   echo "$SOBRAN" | xargs rm -f
   decir "borrados mensuales viejos (se guardan $MAX_MENSUALES)"
+fi
+
+# --- copia afuera: Cloudflare R2 ---------------------------------------------
+# rclone corre en un contenedor: no hay nada instalado en el server.
+if [ -z "${R2_ENDPOINT:-}" ] || [ -z "${R2_BUCKET:-}" ]; then
+  decir "R2 no configurado: la copia queda solo en este disco"
+  exit 0
+fi
+
+rclone() {
+  docker run --rm     -e RCLONE_CONFIG_R2_TYPE=s3     -e RCLONE_CONFIG_R2_PROVIDER=Cloudflare     -e RCLONE_CONFIG_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"     -e RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"     -e RCLONE_CONFIG_R2_ENDPOINT="$R2_ENDPOINT"     -e RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true     -v "$DESTINO:/backups:ro"     -v libreria-fusion_fusion_uploads:/fotos:ro     rclone/rclone:1.68 "$@"
+}
+
+# Dumps: copy y no sync. Que la rotacion borre un diario aca no lo borra en
+# R2: alla se guardan todos un año (pesan ~25 KB cada uno).
+if rclone copy /backups "r2:$R2_BUCKET/db" --include "*.sql.gz"   && rclone delete "r2:$R2_BUCKET/db" --min-age 400d; then
+  decir "R2 ok: dumps copiados"
+else
+  decir "ERROR: no se pudieron copiar los dumps a R2"
+fi
+
+# Fotos: sync, pero lo que se borra en la tienda no desaparece de R2, se
+# mueve a fotos-borradas/<fecha>. Una foto borrada por error se recupera.
+if rclone sync /fotos "r2:$R2_BUCKET/fotos" --backup-dir "r2:$R2_BUCKET/fotos-borradas/$HOY"; then
+  decir "R2 ok: fotos sincronizadas"
+else
+  decir "ERROR: no se pudieron copiar las fotos a R2"
 fi

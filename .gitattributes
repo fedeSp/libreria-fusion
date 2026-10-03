@@ -1,0 +1,3 @@
+# Los scripts de shell corren en el server (Linux): con CRLF, sh los rompe.
+# Sin esto, git archive en Windows los empaqueta con CRLF al deployar.
+*.sh text eol=lf
