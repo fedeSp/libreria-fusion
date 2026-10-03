@@ -121,7 +121,12 @@ Apertura:
 Recomendables:
 
 - [ ] Copiar los backups fuera del VPS (R2, S3 u otra máquina)
-- [ ] Revisar textos legales y datos del local en Ajustes (teléfono con código de área, horarios)
+- [ ] Revisar con la dueña los datos del local en Ajustes (teléfono, horarios, email,
+      redes) y que el aviso de retiro no diga "solo retiro"
+- [ ] Confirmar medios de pago activos y si las "3 cuotas sin interés" son reales
+- [ ] Agregar la razón social de la titular junto al CUIT en el footer (Ley 24.240)
+- [ ] Cargar preguntas frecuentes (hoy está vacía y *Cómo comprar* manda ahí)
+- [ ] Revisar *Devoluciones* (plazo, productos abiertos) y *Quiénes somos*
 - [ ] Pedirle a la dueña o al contador el link de Data Fiscal (ARCA) y cargarlo en Ajustes
 - [ ] Verificar qué pasa si MP confirma un pago de un pedido que ya venció
 - [ ] Monitor de uptime
