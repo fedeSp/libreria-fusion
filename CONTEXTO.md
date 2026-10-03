@@ -254,6 +254,9 @@ sin apuro, y el cambio real se decide otro día.
   productiva: el dominio figura en las bolsas y en el Instagram del local, así que
   no puede mostrar una tienda a medio terminar. Para abrirla se borran dos líneas
   del `location /`. El webhook de MP queda siempre abierto.
+- `location = /api/health` con `auth_basic off` (agregado el 03/10/2026): lo
+  consulta cada 10 minutos el monitor de uptime de GitHub Actions
+  (`.github/workflows/uptime.yml`) y solo dice si la app y la base responden.
 - `zestech.com.ar/libreria` redirige al dominio nuevo conservando la ruta, salvo el
   webhook de MP, que sigue proxeado (un 301 no garantiza que se reenvíe el POST).
 - `NEXT_PUBLIC_BASE_PATH` **vacío** (la tienda pasa de `/libreria` a la raíz) y
