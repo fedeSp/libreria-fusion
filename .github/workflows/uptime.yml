@@ -11,6 +11,10 @@
 # MONITOR_BASIC_AUTH con "usuario:contraseña" (Settings → Secrets → Actions).
 # Al abrir la tienda se puede borrar.
 #
+# Arranca APAGADO: solo chequea si la variable del repo MONITOR_ENABLED vale
+# "true" (Settings → Secrets and variables → Actions → Variables). Así no
+# manda alarmas antes de que /api/health esté deployado.
+#
 # Ojo: GitHub desactiva los workflows programados de un repo público después
 # de 60 días sin commits. Si eso pasa, avisa por mail y se reactiva a mano.
 
@@ -23,6 +27,7 @@ on:
 
 jobs:
   check:
+    if: vars.MONITOR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
