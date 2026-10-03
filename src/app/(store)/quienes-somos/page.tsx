@@ -37,7 +37,8 @@ export default async function QuienesSomosPage() {
         </p>
         <p>
           Esta tienda online es una extensión del mostrador, no un reemplazo:
-          elegís tranquilo desde casa y pasás a buscarlo cuando te queda cómodo.
+          elegís tranquilo desde casa y pasás a buscarlo cuando te queda cómodo,
+          o te lo mandamos.
         </p>
       </div>
 

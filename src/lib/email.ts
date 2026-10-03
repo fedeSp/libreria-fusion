@@ -159,7 +159,7 @@ export async function notifyCustomerOrderPaid(order: OrderForEmail): Promise<voi
   await send(order.customerEmail, `Recibimos tu pedido #${order.number} — Librería Fusión`, html);
 }
 
-/** El pedido está armado. Para una tienda de retiro, este es EL mail. */
+/** El pedido está armado. Para quien retira en el local, este es EL mail. */
 export async function notifyCustomerOrderReady(order: OrderForEmail): Promise<void> {
   if (!order.customerEmail) return;
   const s = await getSettings();
@@ -181,7 +181,11 @@ export async function notifyCustomerOrderReady(order: OrderForEmail): Promise<vo
       `<table style="border-collapse:collapse;width:100%;font-size:14px">${filasDeItems(order)}</table>`,
   );
 
-  await send(order.customerEmail, `Tu pedido #${order.number} está listo para retirar`, html);
+  const asunto =
+    order.deliveryMethod === "ENVIO_DOMICILIO"
+      ? `Tu pedido #${order.number} está listo`
+      : `Tu pedido #${order.number} está listo para retirar`;
+  await send(order.customerEmail, asunto, html);
 }
 
 /**

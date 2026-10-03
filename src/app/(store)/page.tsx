@@ -64,7 +64,7 @@ export default async function HomePage() {
           </h1>
           <p className="mt-3 max-w-xl text-base text-muted">
             Somos una librería de barrio en Villa Bosch. Elegí online, pagá con
-            Mercado Pago y pasá a retirarlo cuando te quede cómodo.
+            Mercado Pago y retiralo en el local o recibilo en tu casa.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link

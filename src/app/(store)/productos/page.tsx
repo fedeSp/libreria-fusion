@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/product-card";
 export const metadata: Metadata = {
   title: "Productos",
   description:
-    "Catálogo completo de Librería Fusión: escolar, comercial y papelera. Comprá online y retirá en Villa Bosch.",
+    "Catálogo completo de Librería Fusión: escolar, comercial y papelera. Comprá online con retiro en Villa Bosch o envío a domicilio.",
 };
 
 // Se renderiza por request: la data sale de Postgres, que no existe en build.

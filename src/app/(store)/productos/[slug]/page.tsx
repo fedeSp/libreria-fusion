@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     product.metaDescription ??
     product.summary ??
-    `${product.name}. Comprá online en Librería Fusión y retiralo en Villa Bosch, Tres de Febrero.`;
+    `${product.name}. Comprá online en Librería Fusión: retiro en Villa Bosch, Tres de Febrero, o envío a domicilio.`;
 
   return {
     title,

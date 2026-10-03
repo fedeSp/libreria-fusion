@@ -188,7 +188,7 @@ async function main() {
       isFeatured: true,
       metaTitle: "Cuaderno Éxito E3 ABC 48 hojas rayado",
       metaDescription:
-        "Cuaderno Éxito E3 tipo ABC, tapa dura forrada, 48 hojas rayadas. Seis colores. Retiralo en Villa Bosch, Tres de Febrero.",
+        "Cuaderno Éxito E3 tipo ABC, tapa dura forrada, 48 hojas rayadas. Seis colores.",
       images: {
         create: [
           {
@@ -247,7 +247,7 @@ async function main() {
       isFeatured: true,
       metaTitle: "Masa ultra liviana Playlife x15 colores",
       metaDescription:
-        "Masa para modelar Playlife Muresco, 15 colores surtidos. No tóxica, sin gluten ni lactosa. Retiralo en Villa Bosch.",
+        "Masa para modelar Playlife Muresco, 15 colores surtidos. No tóxica, sin gluten ni lactosa.",
       images: {
         create: [
           {

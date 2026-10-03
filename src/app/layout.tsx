@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | Librería Fusión",
   },
   description:
-    "Librería, papelera y artículos comerciales en Villa Bosch, Tres de Febrero. Comprá online y retirá en el local.",
+    "Librería, papelera y artículos comerciales en Villa Bosch, Tres de Febrero. Comprá online y retirá en el local o recibilo en tu casa.",
   openGraph: {
     type: "website",
     locale: "es_AR",

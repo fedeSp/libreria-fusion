@@ -150,7 +150,8 @@ export default function CarritoPage() {
             </span>
           </div>
           <p className="mt-1 text-xs text-muted">
-            Sin cargo de envío: retirás en el local.
+            Retiro en el local sin cargo. Si elegís envío, el costo se coordina
+            por WhatsApp.
           </p>
           <div className="mt-3 flex items-baseline justify-between border-t border-line pt-3">
             <span className="font-semibold text-ink">Total</span>

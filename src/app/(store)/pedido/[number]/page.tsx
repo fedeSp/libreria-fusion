@@ -53,6 +53,31 @@ const STATUS_UI: Record<
   },
 };
 
+// Los estados se llaman como el camino de retiro (LISTO_PARA_RETIRAR), pero un
+// pedido con envío pasa por los mismos: acá cambia solo lo que se le dice.
+const STATUS_UI_ENVIO: Partial<typeof STATUS_UI> = {
+  PAGADO: {
+    title: "¡Pago confirmado!",
+    tone: "ok",
+    text: "Ya recibimos tu pago. Estamos preparando tu pedido y te contactamos para coordinar el envío.",
+  },
+  EN_PREPARACION: {
+    title: "Estamos preparando tu pedido",
+    tone: "ok",
+    text: "Lo estamos armando. Te contactamos para coordinar el envío.",
+  },
+  LISTO_PARA_RETIRAR: {
+    title: "¡Tu pedido está listo!",
+    tone: "ok",
+    text: "Ya está armado. Te contactamos para coordinar la entrega.",
+  },
+  ENTREGADO: {
+    title: "Pedido entregado",
+    tone: "ok",
+    text: "Este pedido ya fue entregado. ¡Gracias por tu compra!",
+  },
+};
+
 export default async function PedidoPage({ params, searchParams }: Props) {
   const { number } = await params;
   const { pago } = await searchParams;
@@ -68,7 +93,10 @@ export default async function PedidoPage({ params, searchParams }: Props) {
   if (!order) notFound();
 
   const settings = await getSettings();
-  const ui = STATUS_UI[order.status] ?? STATUS_UI.PENDIENTE_PAGO;
+  const ui =
+    (order.deliveryMethod === "ENVIO_DOMICILIO" ? STATUS_UI_ENVIO[order.status] : undefined) ??
+    STATUS_UI[order.status] ??
+    STATUS_UI.PENDIENTE_PAGO;
   const toneClass =
     ui.tone === "ok"
       ? "border-success/30 bg-success/5"

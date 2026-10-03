@@ -52,8 +52,8 @@ export default async function DevolucionesPage() {
         <h2 className="pt-2 text-lg font-bold">Cómo hacerlo</h2>
         <p className="text-sm">
           Escribinos por WhatsApp o mail con tu número de pedido y contanos qué
-          pasó. Coordinamos y traés el producto al local: como no hacemos envíos,
-          los cambios y devoluciones también se resuelven en el mostrador.
+          pasó y coordinamos cómo resolverlo: podés traer el producto al local
+          o, si lo recibiste por envío, acordamos con vos cómo hacernos llegar.
         </p>
 
         <h2 className="pt-2 text-lg font-bold">Derecho de arrepentimiento</h2>

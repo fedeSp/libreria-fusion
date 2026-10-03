@@ -6,9 +6,9 @@ type Props = {
 };
 
 /**
- * El aviso de "solo retiro en local". Aparece en la franja superior, en cada
- * ficha de producto, en el carrito y en el checkout: es la regla de negocio
- * que más sorpresas evita, así que se repite en todo el recorrido de compra.
+ * El aviso de retiro y envío. Aparece en la franja superior, en cada ficha de
+ * producto, en el carrito y en el checkout: cómo se recibe el pedido es lo que
+ * más sorpresas evita, así que se repite en todo el recorrido de compra.
  */
 export async function PickupNotice({ variant = "inline" }: Props) {
   const settings = await getSettings();
@@ -21,7 +21,7 @@ export async function PickupNotice({ variant = "inline" }: Props) {
       <div className="bg-brand text-white">
         <p className="mx-auto max-w-6xl px-4 py-2 text-center text-sm font-medium">
           {notice}{" "}
-          <span className="font-normal opacity-90">Retirás en {address}.</span>
+          <span className="font-normal opacity-90">Local: {address}.</span>
         </p>
       </div>
     );

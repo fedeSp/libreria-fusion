@@ -7,8 +7,11 @@ tienda anterior, y varias cosas de acá existen para no repetir lo que fallaba a
 
 ## Reglas del negocio
 
-- **No hay envíos.** Todos los pedidos se retiran en el local de Villa Bosch. El aviso
-  aparece en la franja superior, en cada ficha, en el carrito y en el checkout.
+- **Retiro en el local o envío a domicilio.** Retirar en Villa Bosch no tiene cargo.
+  El envío no tiene costo calculado ni integración con correos: el costo y el medio
+  se coordinan por WhatsApp después de la compra. Pagando en efectivo no se puede
+  pedir envío. El aviso aparece en la franja superior, en cada ficha, en el carrito
+  y en el checkout.
 - **Se paga con Mercado Pago** (Checkout Pro). El pago en efectivo al retirar está
   modelado y sembrado, pero desactivado: se prende desde el admin, sin tocar código.
 - **La plata se guarda en centavos** (`Int`). Nunca floats.
