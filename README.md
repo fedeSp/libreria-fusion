@@ -105,6 +105,7 @@ Hecho:
 - [x] Pagos tardíos: el link de MP vence con el pedido (45 min), sin Rapipago/Pago Fácil,
       y si igual entra un pago de un pedido cancelado se devuelve solo y avisa al local
 - [x] Backups de la base y de las fotos copiados a Cloudflare R2 todas las noches
+- [x] Mails activos: `SMTP_PASS` cargada y verificada contra Gmail (03/10/2026)
 - [x] Monitor de uptime: GitHub Actions consulta `/api/health` cada 10 minutos
       (`.github/workflows/uptime.yml`, prendido con la variable `MONITOR_ENABLED`)
 
@@ -115,7 +116,6 @@ Bloqueantes:
 - [ ] Cuenta de MP de la librería (producción real): cargar `MP_ACCESS_TOKEN` y
       `MP_WEBHOOK_SECRET`, registrar el webhook en el panel de MP y hacer una
       compra real chica + cancelarla (el reembolso no se puede probar en sandbox)
-- [ ] Cargar `SMTP_PASS` (app password de Gmail) para activar los mails
 - [ ] Cargar el catálogo real (productos, precios, stock, fotos)
 
 Apertura:

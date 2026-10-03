@@ -285,7 +285,6 @@ server, pero todo el sitio está detrás del basic auth y `TIENDA_INDEXABLE`
 
 Pendientes reales:
 
-- Cargar `SMTP_PASS` (contraseña de aplicación de Gmail) para activar los mails.
 - Cuenta de Mercado Pago de la librería (hoy corre con vendedor de prueba).
 - Cargar el catálogo de verdad (la tienda vieja tenía 2 SKUs publicados).
 
