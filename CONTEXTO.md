@@ -243,7 +243,7 @@ sin apuro, y el cambio real se decide otro día.
 
 ### Qué cambia de nuestro lado en el paso 3
 
-**Hecho el 21/09/2026** (falta solo apuntar los registros DNS al VPS):
+**Hecho el 21/09/2026.** Los registros DNS ya apuntan al VPS en nube naranja (verificado el 03/10/2026: la raíz da el 401 del basic auth de nuestro nginx, `www` hace 301 y el webhook responde sin auth):
 
 - Bloque de nginx en `sites-available/libreriafusion`, con certificado Origin de
   Cloudflare en `/etc/nginx/ssl/libreriafusion.{pem,key}` (vence en 2041, solo vale
@@ -276,8 +276,9 @@ sin apuro, y el cambio real se decide otro día.
 
 ## 1.8 Estado
 
-La tienda **todavía no está abierta al público**: `src/app/layout.tsx` fuerza
-`robots: { index: false }`. Sacar ese flag es parte de la apertura, no antes.
+La tienda **todavía no está abierta al público**: el dominio ya llega a nuestro
+server, pero todo el sitio está detrás del basic auth y `TIENDA_INDEXABLE`
+(`src/lib/seo.ts`) está en `false`. Sacar las dos cosas es la apertura, no antes.
 
 Pendientes reales:
 
@@ -285,7 +286,7 @@ Pendientes reales:
 - Cuenta de Mercado Pago de la librería (hoy corre con vendedor de prueba).
 - Cargar el catálogo de verdad (la tienda vieja tenía 2 SKUs publicados).
 
-El README tiene el checklist largo de lo ya hecho.
+El README tiene el checklist completo: lo hecho y lo que falta para salir.
 
 ## 1.9 Cómo verificar un cambio
 

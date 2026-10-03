@@ -97,11 +97,31 @@ Hecho:
 
 - [x] Subida de fotos propia desde el admin (volumen persistente) + alertas en el panel
 
-Pendiente:
+- [x] Vencimiento de pedidos sin pagar (`expireStaleOrders`, se corre al listar/mostrar pedidos)
+- [x] DNS del dominio apuntando al VPS, en nube naranja (verificado el 03/10/2026)
 
-- [ ] Job que cancele pedidos vencidos (expiresAt) y libere el intento
+Pendiente para salir a producción.
+
+Bloqueantes:
+
+- [ ] Cuenta de MP de la librería (producción real): cargar `MP_ACCESS_TOKEN` y
+      `MP_WEBHOOK_SECRET`, registrar el webhook en el panel de MP y hacer una
+      compra real chica + cancelarla (el reembolso no se puede probar en sandbox)
 - [ ] Cargar `SMTP_PASS` (app password de Gmail) para activar los mails
-- [ ] Cuenta de MP de la librería (producción real) — hoy corre con vendedor de prueba
+- [ ] Cargar el catálogo real (productos, precios, stock, fotos)
+
+Apertura:
+
+- [ ] Sacar el basic auth del `location /` en nginx (y decidir si queda delante de `/admin`)
+- [ ] `TIENDA_INDEXABLE = true` en `src/lib/seo.ts`, rebuild y deploy
+
+Recomendables:
+
+- [ ] Copiar los backups fuera del VPS (R2, S3 u otra máquina)
+- [ ] Revisar textos legales y datos del local en Ajustes (teléfono con código de área, horarios)
+- [ ] Pedirle a la dueña o al contador el link de Data Fiscal (ARCA) y cargarlo en Ajustes
+- [ ] Verificar qué pasa si MP confirma un pago de un pedido que ya venció
+- [ ] Monitor de uptime
 
 ## Subida de fotos
 
