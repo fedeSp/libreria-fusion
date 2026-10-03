@@ -102,6 +102,8 @@ Hecho:
 
 - [x] Vencimiento de pedidos sin pagar (`expireStaleOrders`, se corre al listar/mostrar pedidos)
 - [x] DNS del dominio apuntando al VPS, en nube naranja (verificado el 03/10/2026)
+- [x] Pagos tardíos: el link de MP vence con el pedido (45 min), sin Rapipago/Pago Fácil,
+      y si igual entra un pago de un pedido cancelado se devuelve solo y avisa al local
 - [x] Monitor de uptime: GitHub Actions consulta `/api/health` cada 10 minutos
       (`.github/workflows/uptime.yml`, prendido con la variable `MONITOR_ENABLED`)
 
@@ -130,7 +132,6 @@ Recomendables:
 - [ ] Cargar preguntas frecuentes (hoy está vacía y *Cómo comprar* manda ahí)
 - [ ] Revisar *Devoluciones* (plazo, productos abiertos) y *Quiénes somos*
 - [ ] Pedirle a la dueña o al contador el link de Data Fiscal (ARCA) y cargarlo en Ajustes
-- [ ] Verificar qué pasa si MP confirma un pago de un pedido que ya venció
 
 ## Subida de fotos
 

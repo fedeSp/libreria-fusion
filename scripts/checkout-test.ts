@@ -10,7 +10,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { resolveLines } from "../src/lib/checkout";
-import { aplicarPago } from "../src/lib/orders";
+import { aplicarPago, marcarPagoDevuelto } from "../src/lib/orders";
 
 const db = new PrismaClient();
 const PREFIJO = "test-checkout-";
@@ -165,6 +165,29 @@ async function main() {
 
   check("el pedido queda CANCELADO", cancelado?.status === "CANCELADO", String(cancelado?.status));
   check("no se tocó el stock", stockIntacto === 5, String(stockIntacto));
+
+  // ------------------------------------------------------------ pago tardío
+  console.log("\n=== un pago que llega con el pedido ya cancelado se devuelve ===");
+  const p4 = await crearProducto("tardio", 5, 100000);
+  const v4 = p4.variants[0];
+  const pedidoD = await crearPedido(v4.id, 1, 100000, metodo.id);
+  await db.order.update({ where: { id: pedidoD.id }, data: { status: "CANCELADO" } });
+
+  const pagoTardio = { id: `${PREFIJO}pago-D`, estado: "APROBADO" as const, estadoProveedor: "approved", montoCents: 100000 };
+  const tardio = await aplicarPago(pedidoD.id, pagoTardio);
+  const sigueCancelado = await db.order.findUnique({ where: { id: pedidoD.id } });
+  const stockTardio = (await db.productVariant.findUnique({ where: { id: v4.id } }))!.stock;
+
+  check("pide devolver la plata", tardio.aDevolver);
+  check("no revive el pedido", sigueCancelado?.status === "CANCELADO", String(sigueCancelado?.status));
+  check("no descuenta stock", stockTardio === 5, String(stockTardio));
+  check("no lo trata como venta nueva", !tardio.reciénPagado);
+
+  await marcarPagoDevuelto(pagoTardio.id);
+  const reintento = await aplicarPago(pedidoD.id, pagoTardio);
+  const pagoD = await db.payment.findUnique({ where: { providerPaymentId: pagoTardio.id } });
+  check("si MP reenvía el aviso, no devuelve dos veces", !reintento.aDevolver);
+  check("el pago sigue figurando devuelto", pagoD?.status === "REEMBOLSADO", String(pagoD?.status));
 
   console.log(fallas === 0 ? "\nTODO OK\n" : `\n${fallas} FALLAS\n`);
 }

@@ -22,9 +22,17 @@ export type CreatePreferenceInput = {
   orderNumber: number;
   items: PreferenceItem[];
   payer: { name: string; email: string };
-  // URL pública base (https://zestech.com.ar/libreria) para armar los retornos.
+  // URL pública base (https://libreriafusion.com.ar) para armar los retornos.
   baseUrl: string;
+  // Cuándo vence el pedido. El link de pago de MP vence a la misma hora.
+  expiresAt: Date;
 };
+
+// MP pide las fechas con el huso explícito. Argentina no tiene horario de
+// verano, así que -03:00 fijo es correcto todo el año.
+function fechaMP(d: Date): string {
+  return new Date(d.getTime() - 3 * 3600_000).toISOString().replace("Z", "-03:00");
+}
 
 export type PreferenceResult = {
   preferenceId: string;
@@ -62,6 +70,17 @@ export async function createPreference(
     auto_return: "approved",
     notification_url: `${input.baseUrl}/api/mp/webhook`,
     statement_descriptor: "LIBRERIA FUSION",
+    // El pedido vence (ORDER_TTL_MINUTES) y el link de pago tiene que vencer
+    // con él. Sin esto el link servía para siempre y se podía pagar un pedido
+    // que la tienda ya había dado por cancelado.
+    expires: true,
+    expiration_date_to: fechaMP(input.expiresAt),
+    // Sin cupones de Rapipago / Pago Fácil ni pago en cajero: se pagan horas o
+    // días después, mucho más allá del vencimiento del pedido. Quien quiera
+    // pagar en efectivo tiene "efectivo al retirar" en el propio checkout.
+    payment_methods: {
+      excluded_payment_types: [{ id: "ticket" }, { id: "atm" }],
+    },
   };
 
   const res = await fetch(`${MP_API}/checkout/preferences`, {

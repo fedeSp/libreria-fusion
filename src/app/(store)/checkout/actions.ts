@@ -145,6 +145,7 @@ export async function createCheckout(
       })),
       payer: { name: parsed.data.name, email: parsed.data.email },
       baseUrl: baseUrl(),
+      expiresAt,
     });
 
     // Registramos el intento de pago (PENDIENTE) para conciliar con el webhook.

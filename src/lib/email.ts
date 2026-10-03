@@ -189,6 +189,41 @@ export async function notifyCustomerOrderReady(order: OrderForEmail): Promise<vo
 }
 
 /**
+ * Entró un pago de un pedido que ya estaba cancelado y se intentó devolver
+ * solo. El local tiene que enterarse en los dos casos: si salió, para no
+ * sorprenderse con el movimiento en MP; si falló, porque tiene que devolverlo
+ * a mano desde Mercado Pago.
+ */
+export async function notifyAdminLatePayment(
+  order: OrderForEmail,
+  devolucion: { ok: true } | { ok: false; error: string },
+): Promise<void> {
+  const settings = await getSettings();
+  const to = process.env.ADMIN_NOTIFY_EMAIL || settings["store.email"];
+
+  const cuerpo = devolucion.ok
+    ? `<p>Entró un pago de <strong>${formatPrice(order.totalCents)}</strong> del pedido <strong>#${order.number}</strong>, que ya estaba cancelado. <strong>Se le devolvió automáticamente</strong> por Mercado Pago y se le avisó al cliente por mail.</p>
+       <p style="color:#5b6472;font-size:13px">No hay que hacer nada. Si el cliente todavía quiere los productos, que haga un pedido nuevo.</p>`
+    : `<p style="color:#c2185b;font-weight:bold">Entró un pago de ${formatPrice(order.totalCents)} del pedido #${order.number}, que ya estaba cancelado, y NO se pudo devolver solo.</p>
+       <p>Hay que devolverlo a mano desde Mercado Pago (Actividad → el pago → Devolver) o contactar al cliente.</p>
+       <p style="color:#5b6472;font-size:12px">Error: ${devolucion.error}</p>`;
+
+  const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#1d1d1f">
+      <h2 style="color:#c2185b">Pago de un pedido cancelado</h2>
+      ${cuerpo}
+      <p style="margin:0">${order.customerName}<br>${order.customerEmail}<br>${order.customerPhone}</p>
+    </div>`;
+
+  await send(
+    to,
+    devolucion.ok
+      ? `Pedido #${order.number}: pago tardío devuelto`
+      : `⚠️ Pedido #${order.number}: hay que devolver un pago a mano`,
+    html,
+  );
+}
+
+/**
  * El pedido se canceló.
  *
  * Solo hay dos casos, y la diferencia es si hay plata para devolver. Con

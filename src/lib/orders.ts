@@ -41,6 +41,12 @@ export type ResultadoDePago = {
   reciénPagado: boolean;
   /** Variantes que se vendieron por encima del stock que había. */
   sobrevendidas: { variantId: string; producto: string; pedidas: number; habia: number }[];
+  /**
+   * Se aprobó un pago de un pedido que ya estaba CANCELADO (venció, o lo
+   * canceló el local). El cliente pagó algo que no se le va a entregar: hay
+   * que devolverle la plata.
+   */
+  aDevolver: boolean;
 };
 
 /**
@@ -59,11 +65,17 @@ export async function aplicarPago(
   pago: { id: string; estado: PaymentStatus; estadoProveedor: string; montoCents: number },
 ): Promise<ResultadoDePago> {
   let reciénPagado = false;
+  let aDevolver = false;
   const sobrevendidas: ResultadoDePago["sobrevendidas"] = [];
 
   await db.$transaction(async (tx) => {
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) return;
+
+    const previo = await tx.payment.findUnique({ where: { providerPaymentId: pago.id } });
+    // Un pago que ya devolvimos no vuelve a figurar como aprobado aunque MP
+    // reenvíe una notificación vieja: si no, se intentaría devolver dos veces.
+    const yaDevuelto = previo?.status === "REEMBOLSADO";
 
     await tx.payment.upsert({
       where: { providerPaymentId: pago.id },
@@ -75,8 +87,14 @@ export async function aplicarPago(
         providerPaymentId: pago.id,
         providerStatus: pago.estadoProveedor,
       },
-      update: { status: pago.estado, providerStatus: pago.estadoProveedor },
+      update: yaDevuelto ? {} : { status: pago.estado, providerStatus: pago.estadoProveedor },
     });
+
+    // Pago tardío: no se revive el pedido. Puede haberlo cancelado el local a
+    // propósito, y el stock ya no está reservado para nadie. Se devuelve.
+    if (pago.estado === "APROBADO" && order.status === "CANCELADO" && !yaDevuelto) {
+      aDevolver = true;
+    }
 
     if (pago.estado === "APROBADO" && order.status === "PENDIENTE_PAGO") {
       await tx.order.update({
@@ -119,5 +137,13 @@ export async function aplicarPago(
     }
   });
 
-  return { reciénPagado, sobrevendidas };
+  return { reciénPagado, sobrevendidas, aDevolver };
+}
+
+/** Deja asentado que un pago ya se devolvió por Mercado Pago. */
+export async function marcarPagoDevuelto(providerPaymentId: string): Promise<void> {
+  await db.payment.update({
+    where: { providerPaymentId },
+    data: { status: "REEMBOLSADO" },
+  });
 }

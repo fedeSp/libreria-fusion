@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
-import { aplicarPago } from "@/lib/orders";
-import { getPayment } from "@/lib/mercadopago";
-import { notifyAdminNewOrder, notifyCustomerOrderPaid } from "@/lib/email";
+import { aplicarPago, marcarPagoDevuelto } from "@/lib/orders";
+import { getPayment, refundPayment } from "@/lib/mercadopago";
+import {
+  notifyAdminLatePayment,
+  notifyAdminNewOrder,
+  notifyCustomerOrderCancelled,
+  notifyCustomerOrderPaid,
+} from "@/lib/email";
 import type { PaymentStatus } from "@prisma/client";
 
 // Mercado Pago llama a esta URL cuando cambia el estado de un pago. Nunca
@@ -102,7 +107,7 @@ export async function POST(req: NextRequest) {
     // Todo lo que toca el pedido y el stock vive en lib/orders: el webhook
     // solo traduce lo que dijo Mercado Pago. Así esa parte se puede testear
     // sin levantar un servidor ni hablar con MP.
-    const { reciénPagado, sobrevendidas } = await aplicarPago(orderId, {
+    const { reciénPagado, sobrevendidas, aDevolver } = await aplicarPago(orderId, {
       id: payment.id,
       estado: status,
       estadoProveedor: payment.status,
@@ -116,6 +121,31 @@ export async function POST(req: NextRequest) {
       console.error(
         `SOBREVENTA en el pedido ${orderId}: se vendieron ${s.pedidas} de "${s.producto}" y había ${s.habia}.`,
       );
+    }
+
+    // Pagó un pedido que ya estaba cancelado. Desde que el link de MP vence con
+    // el pedido no debería pasar, pero si pasa el cliente queda cobrado y sin
+    // nada: se devuelve solo y se avisa.
+    if (aDevolver) {
+      const devolucion = await refundPayment(payment.id);
+      if (devolucion.ok) await marcarPagoDevuelto(payment.id);
+      else console.error(`PAGO TARDÍO SIN DEVOLVER en el pedido ${orderId}:`, devolucion.error);
+
+      try {
+        const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });
+        if (order) {
+          await notifyAdminLatePayment(order, devolucion);
+          if (devolucion.ok) await notifyCustomerOrderCancelled(order, true);
+        }
+      } catch (mailErr) {
+        console.error("No se pudo avisar del pago tardío:", mailErr);
+      }
+
+      // Si la devolución falló, 500 para que MP reintente la notificación y
+      // con ella la devolución. El local ya quedó avisado por mail.
+      if (!devolucion.ok) {
+        return NextResponse.json({ error: "devolución pendiente" }, { status: 500 });
+      }
     }
 
     const justPaid = reciénPagado;
